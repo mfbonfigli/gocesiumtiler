@@ -6,7 +6,7 @@
 package lidario
 
 import (
-	"cesium_tiler/structs/octree"
+	"go_cesium_tiler/structs/octree"
 	"encoding/binary"
 	"io"
 	"os"

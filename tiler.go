@@ -1,9 +1,9 @@
 package main
 
 import (
-	lidario "cesium_tiler/lasread"
-	"cesium_tiler/structs"
-	"cesium_tiler/structs/octree"
+	lidario "go_cesium_tiler/lasread"
+	"go_cesium_tiler/structs"
+	"go_cesium_tiler/structs/octree"
 	"fmt"
 	"log"
 	"time"

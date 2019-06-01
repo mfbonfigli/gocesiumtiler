@@ -3,7 +3,7 @@
 package main
 
 import (
-	"cesium_tiler/structs"
+	"go_cesium_tiler/structs"
 	"flag"
 	"fmt"
 	"os"
