@@ -6,8 +6,8 @@
 package lidario
 
 import (
-	"go_cesium_tiler/structs/octree"
 	"encoding/binary"
+	"go_cesium_tiler/structs/octree"
 	"io"
 	"os"
 	"runtime"
@@ -16,18 +16,18 @@ import (
 
 // NewLasFile creates a new LasFile structure which stores the points data directly into OctElement instances
 // which can be retrieved by index using the GetOctElement function
-func NewLasFileForTiler(fileName string) (*LasFile, error) {
+func NewLasFileForTiler(fileName string, zCorrection func(lat, lon, z float64) float64) (*LasFile, error) {
 	// initialize the VLR array
 	vlrs := []VLR{}
 	las := LasFile{fileName: fileName, fileMode: "r", Header: LasHeader{}, VlrData: vlrs}
-	if err := las.readForOctree(); err != nil {
+	if err := las.readForOctree(zCorrection); err != nil {
 		return &las, err
 	}
 	return &las, nil
 }
 
 // Reads the las file and produces a LasFile struct instance loading points data into its inner list of OctElements
-func (las *LasFile) readForOctree() error {
+func (las *LasFile) readForOctree(zCorrection func(lat, lon, z float64) float64) error {
 	var err error
 	if las.f, err = os.Open(las.fileName); err != nil {
 		return err
@@ -55,7 +55,7 @@ func (las *LasFile) readForOctree() error {
 			las.usePointUserdata = false
 		}
 
-		if err := las.readPointsOctElem(); err != nil {
+		if err := las.readPointsOctElem(zCorrection); err != nil {
 			return err
 		}
 	}
@@ -64,7 +64,7 @@ func (las *LasFile) readForOctree() error {
 
 // Reads all the points of the given las file and parses them into an OctElement data structure which is then stored
 // in the given LasFile instance
-func (las *LasFile) readPointsOctElem() error {
+func (las *LasFile) readPointsOctElem(zCorrection func(lat, lon, z float64) float64) error {
 	las.Lock()
 	defer las.Unlock()
 	las.pointDataOctElement = make([]octree.OctElement, las.Header.NumberPoints)
@@ -161,7 +161,7 @@ func (las *LasFile) readPointsOctElem() error {
 					offset += 2
 					// las.rgbData[i] = rgb
 				}
-				las.pointDataOctElement[i] = *octree.NewOctElement(X, Y, Z, R, G, B, Intensity, Classification)
+				las.pointDataOctElement[i] = *octree.NewOctElement(X, Y, zCorrection(X, Y, Z), R, G, B, Intensity, Classification)
 
 			}
 		}(startingPoint, endingPoint)

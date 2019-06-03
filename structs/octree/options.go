@@ -1,4 +1,4 @@
-package structs
+package octree
 
 type TilerOptions struct {
 	Input string

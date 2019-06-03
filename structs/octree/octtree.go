@@ -1,7 +1,6 @@
 package octree
 
 import (
-	"cesium_tiler/structs"
 	"errors"
 	"math"
 	"math/rand"
@@ -14,16 +13,16 @@ import (
 type OctTree struct {
 	itemsToAdd                         []OctElement
 	RootNode                           OctNode
-	built                              bool
+	Built                              bool
 	minX, maxX, minY, maxY, minZ, maxZ float64
-	Opts                               *structs.TilerOptions
+	Opts                               *TilerOptions
 }
 
 // Builds an empty OctTree initializing its properties to the correct defaults
-func NewOctTree(opts *structs.TilerOptions) *OctTree {
+func NewOctTree(opts *TilerOptions) *OctTree {
 	return &OctTree{
 		itemsToAdd: make([]OctElement, 0),
-		built:      false,
+		Built:      false,
 		minX:       math.MaxFloat64,
 		minY:       math.MaxFloat64,
 		minZ:       math.MaxFloat64,
@@ -45,22 +44,22 @@ func (octTree *OctTree) recomputeBoundsFromElement(element *OctElement) {
 
 // Adds a splice of pointers to OctElement instances to the OctTree inner list of items to be initialized
 func (octTree *OctTree) AddItems(items []OctElement) error {
-	if octTree.built {
-		return errors.New("cannot add items to a built octree")
+	if octTree.Built {
+		return errors.New("cannot add items to a Built octree")
 	}
 	octTree.itemsToAdd = append(octTree.itemsToAdd, items...)
 	for _, e := range items {
 		octTree.recomputeBoundsFromElement(&e)
 	}
-	octTree.built = false
+	octTree.Built = false
 	return nil
 }
 
 // Builds the hierarchical tree structure propagating the added items according to the TilerOptions provided
 // during initialization
 func (octTree *OctTree) BuildTree() error {
-	if octTree.built {
-		return errors.New("octree already built")
+	if octTree.Built {
+		return errors.New("octree already Built")
 	}
 	octNode := NewOctNode(NewBoundingBox(octTree.minX, octTree.maxX, octTree.minY, octTree.maxY, octTree.minZ, octTree.maxZ), octTree.Opts, 1, nil)
 	octTree.RootNode = *octNode
@@ -87,13 +86,13 @@ func (octTree *OctTree) BuildTree() error {
 	wg.Wait()
 
 	octTree.itemsToAdd = nil
-	octTree.built = true
+	octTree.Built = true
 
 	return nil
 }
 
 func (octTree *OctTree) PrintStructure() {
-	if octTree.built {
+	if octTree.Built {
 		octTree.RootNode.PrintStructure()
 	}
 }

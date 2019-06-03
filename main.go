@@ -3,14 +3,16 @@
 package main
 
 import (
-	"go_cesium_tiler/structs"
 	"flag"
 	"fmt"
+	"go_cesium_tiler/structs/octree"
+	"log"
 	"os"
+	"time"
 )
 
 func main() {
-	//defer profile.Start(profile.MemProfile).Stop()
+	// defer profile.Start(profile.CPUProfile).Stop()
 
 	// Retrieve command line args
 	input := flag.String("Input", "", "input las folder")
@@ -19,12 +21,12 @@ func main() {
 	colorBits := flag.Int("ColorDepth", 8, "Number of bits of color depth")
 	zOffset := flag.Float64("Zoffset", 0, "Vertical offset to apply in meters")
 	maxNumPts := flag.Int("MaxNumPts", 50000, "Max number of points per tile")
-	zGeoidCorrection := flag.Bool("correctGeoidHeight", false, "Enable Geoid to Ellipsoid elevation correction")
+	zGeoidCorrection := flag.Bool("CorrectGeoidHeight", false, "Enable Geoid to Ellipsoid elevation correction")
 
 	flag.Parse()
 
 	// Put args inside a TilerOptions struct
-	opts := structs.TilerOptions{
+	opts := octree.TilerOptions{
 		Input:                  *input,
 		Output:                 *output,
 		Srid:                   *srid,
@@ -41,6 +43,7 @@ func main() {
 
 	// Starts the tiler
 
+	defer timeTrack(time.Now(), "tiler")
 	err := RunTiler(&opts)
 	if err != nil {
 		fmt.Println("Error while tiling: ", err)
@@ -50,7 +53,7 @@ func main() {
 // Validates the input options provided to the command line tool checking
 // that input and output folders exists and that the specified color depth
 // is valid
-func validateOptions(opts *structs.TilerOptions) (string, bool) {
+func validateOptions(opts *octree.TilerOptions) (string, bool) {
 	if _, err := os.Stat(opts.Input); os.IsNotExist(err) {
 		return "Input folder not found", false
 	}
@@ -61,4 +64,9 @@ func validateOptions(opts *structs.TilerOptions) (string, bool) {
 		return "Color depth not supported. Only 8 bits or 16 bits are allowed.", false
 	}
 	return "", true
+}
+
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	log.Printf("%s took %s", name, elapsed)
 }

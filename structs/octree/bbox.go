@@ -49,7 +49,7 @@ func newBoundingBox(parent *BoundingBox, octant *uint8) *BoundingBox {
 	return NewBoundingBox(xMin, xMax, yMin, yMax, zMin, zMax)
 }
 
-func (bbox *BoundingBox) getVolume() float64 {
+func (bbox *BoundingBox) GetVolume() float64 {
 	return (bbox.Xmax - bbox.Xmin) * (bbox.Ymax - bbox.Ymin) * (bbox.Zmax - bbox.Zmin)
 }
 
@@ -69,4 +69,10 @@ func (bbox *BoundingBox) getOctantFromElement(element *OctElement) uint8 {
 
 func (bbox *BoundingBox) getOctantBoundingBox(octant *uint8) *BoundingBox {
 	return newBoundingBox(bbox, octant)
+}
+
+func (bbox *BoundingBox) CanContain(e *OctElement) bool {
+	return (e.X >= bbox.Xmin && e.X <= bbox.Xmax) &&
+		(e.Y >= bbox.Ymin && e.Y <= bbox.Ymax) &&
+		(e.Z >= bbox.Zmin && e.Z <= bbox.Zmax)
 }
