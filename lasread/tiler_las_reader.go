@@ -177,6 +177,7 @@ func (las *LasFile) readPointsOctElem(zCorrection func(lat, lon, z float64) floa
 func (las *LasFile) GetOctElement(index int) *octree.OctElement {
 	return &las.pointDataOctElement[index]
 }
+
 // Returns all the OctElements
 func (las *LasFile) GetOctElements() []octree.OctElement {
 	return las.pointDataOctElement

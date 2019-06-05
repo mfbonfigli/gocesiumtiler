@@ -3,10 +3,10 @@ package lidario
 import (
 	"bufio"
 	"bytes"
-	"go_cesium_tiler/structs/octree"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"go_cesium_tiler/structs/octree"
 	"io"
 	"math"
 	"os"

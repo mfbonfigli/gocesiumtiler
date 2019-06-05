@@ -8,14 +8,45 @@ import (
 	lidario "go_cesium_tiler/lasread"
 	"go_cesium_tiler/structs/octree"
 	"log"
+	"os"
+	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 )
 
 // Starts the tiling process
 func RunTiler(opts *octree.TilerOptions) error {
+
+	LogOutput("Preparing list of files to process...")
+
+	// Prepare list of files to process
+	lasFiles := make([]string, 0)
+
+	// If folder processing is not enabled then las file is given by -input flag, otherwise look for las in -input folder
+	// eventually excluding nested folders if Recursive flag is disabled
+	if !opts.FolderProcessing {
+		lasFiles = append(lasFiles, opts.Input)
+	} else {
+		baseInfo, _ := os.Stat(opts.Input)
+		err := filepath.Walk(opts.Input, func(path string, info os.FileInfo, err error) error {
+			if info.IsDir() && !opts.Recursive && !os.SameFile(info, baseInfo) {
+				return filepath.SkipDir
+			} else {
+				if strings.ToLower(filepath.Ext(info.Name())) == ".las" {
+					lasFiles = append(lasFiles, path)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	//fileName := "C:\\Users\\bonfi\\Desktop\\las\\output\\2019-JAN-07_Montesilvano3 Track_B_2019-02-25_11h30_01_331.las"
-	fileName := opts.Input
+	// fileName := opts.Input
 
 	// Define elevation (Z) correction algorithm to apply
 	zCorrectionAlg := func(lat, lon, z float64) float64 {
@@ -33,28 +64,53 @@ func RunTiler(opts *octree.TilerOptions) error {
 		}
 	}
 
+	// load las points in octree buffer
+	for i, fileName := range lasFiles {
+		// Create empty octree
+		OctTree := octree.NewOctTree(opts)
+
+		// Reading files
+		LogOutput("Processing file " + strconv.Itoa(i+1) + "/" + strconv.Itoa(len(lasFiles)))
+		LogOutput("> reading data from las file...", filepath.Base(fileName))
+		err := loadLasInOctree(fileName, OctTree, zCorrectionAlg)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Build tree hierarchical structure
+		LogOutput("> building data structure...")
+		err = OctTree.BuildTree()
+		if err != nil {
+			return err
+		}
+
+		LogOutput("> exporting data...")
+		nameWext := filepath.Base(fileName)
+		extension := filepath.Ext(nameWext)
+		name := nameWext[0 : len(nameWext)-len(extension)]
+		err = exportOctreeAsTileset(opts, OctTree, name)
+		if err != nil {
+			return err
+		}
+		LogOutput("> done processing", filepath.Base(fileName))
+	}
+	return nil
+}
+
+// Extracts all the points from the given LAS file and loads them in the given octree
+func loadLasInOctree(fileName string, OctTree *octree.OctTree, zCorrectionAlg func(lat, lon, z float64) float64) error {
 	// Read las file and obtaining list of OctElements
 	pts, err := readLas(fileName, zCorrectionAlg)
 	if err != nil {
 		return err
 	}
 
-	// Create empty octree
-	OctTree := octree.NewOctTree(opts)
-
 	// Load items into octree
 	err = OctTree.AddItems(pts)
 	if err != nil {
 		return err
 	}
-
-	// Build tree hierarchical structure
-	err = OctTree.BuildTree()
-	if err != nil {
-		return err
-	}
-
-	return exportOctreeAsTileset(opts, OctTree)
+	return nil
 }
 
 // Reads the given las file and preloads data in a list of OctElements
@@ -71,7 +127,7 @@ func readLas(file string, zCorrection func(lat, lon, z float64) float64) ([]octr
 
 // Exports the point cloud represented by the given built octree into 3D tiles data structure according to the options
 // specified in the TilerOptions instance
-func exportOctreeAsTileset(opts *octree.TilerOptions, octree *octree.OctTree) error {
+func exportOctreeAsTileset(opts *octree.TilerOptions, octree *octree.OctTree, subfolder string) error {
 	// if octree is not built, exit
 	if !octree.Built {
 		return errors.New("octree not built, data structure not initialized")
@@ -84,13 +140,14 @@ func exportOctreeAsTileset(opts *octree.TilerOptions, octree *octree.OctTree) er
 	workchan := make(chan *io.WorkUnit, numConsumers*5)
 
 	// init channel where consumers can eventually submit errors that prevented them to finish the job
-	errchan := make(chan error, )
+	errchan := make(chan error)
 
 	var wg sync.WaitGroup
 
 	// init producer
 	wg.Add(1)
-	go io.Produce(opts.Output, &octree.RootNode, opts, workchan, &wg)
+
+	go io.Produce(opts.Output, &octree.RootNode, opts, workchan, &wg, subfolder)
 
 	// init consumers
 	for i := 0; i < numConsumers; i++ {
@@ -116,4 +173,3 @@ func exportOctreeAsTileset(opts *octree.TilerOptions, octree *octree.OctTree) er
 
 	return nil
 }
-

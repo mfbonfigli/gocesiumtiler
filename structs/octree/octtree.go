@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"math/rand"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -64,30 +65,43 @@ func (octTree *OctTree) BuildTree() error {
 	octNode := NewOctNode(NewBoundingBox(octTree.minX, octTree.maxX, octTree.minY, octTree.maxY, octTree.minZ, octTree.maxZ), octTree.Opts, 1, nil)
 	octTree.RootNode = *octNode
 	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(octTree.itemsToAdd), func(i, j int) { octTree.itemsToAdd[i], octTree.itemsToAdd[j] = octTree.itemsToAdd[j], octTree.itemsToAdd[i] })
-
+	rand.Shuffle(len(octTree.itemsToAdd), func(i, j int) {
+		octTree.itemsToAdd[i], octTree.itemsToAdd[j] = octTree.itemsToAdd[j], octTree.itemsToAdd[i]
+	})
 	var wg sync.WaitGroup
-	wg.Add(len(octTree.itemsToAdd))
+	//wg.Add(len(octTree.itemsToAdd))
 
-	N := 64
-	sem := make(chan struct{}, N)
+	N := runtime.NumCPU()
+	size:= len(octTree.itemsToAdd)/N
+	for i:=0; i<N; i++ {
+		start := i*size
+		end := (i+1)*size
+		if i == N-1 {
+			end = len(octTree.itemsToAdd)
+		}
+		go func(start int, end int) {
+			wg.Add(1)
+			for j:=start;j<end;j++{
+				octTree.RootNode.AddOctElement(&octTree.itemsToAdd[j])
+			}
+			wg.Done()
+		}(start, end)
+	}
+	/*sem := make(chan struct{}, N)
 
 	for i := 0; i < len(octTree.itemsToAdd); i++ {
 		sem <- struct{}{}
 		go func(i int) {
-			defer wg.Done()
 			octTree.RootNode.AddOctElement(&octTree.itemsToAdd[i])
-			defer func() {
-				<-sem
-			}()
+			wg.Done()
+			<-sem
 		}(i)
-	}
+	}*/
 
 	wg.Wait()
 
 	octTree.itemsToAdd = nil
 	octTree.Built = true
-
 	return nil
 }
 

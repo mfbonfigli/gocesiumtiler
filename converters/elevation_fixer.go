@@ -12,6 +12,7 @@ type ElevationFixer struct {
 	geoidHeightMap sync.Map
 }
 
+
 // Inits a new instance of ElevationFixer for the given Srid and with given caching cell size. To all points with X,Y coordinates
 // falling inside a square cell with side equal to cellSize will be applied the same, eventually cached, elevation transformation.
 // Choosing a small value for cell size improves the accuracy but increases computation times. Cell sizes approximately
@@ -38,7 +39,7 @@ func (elevFix *ElevationFixer) GetCorrectedElevation(lon, lat, originalElevation
 	if okX {
 		valY, okY := valX.(*sync.Map).Load(y)
 		if okY {
-			return valY.(float64), nil
+			return valY.(float64) + originalElevation, nil
 		} else {
 			cX, cY := elevFix.getCellCenter(x, y)
 			off, err := GetEllipsoidToGeoidOffset(cX, cY, elevFix.SourceSrid)

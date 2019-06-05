@@ -15,13 +15,13 @@ type OctElement struct {
 
 func NewOctElement(X, Y, Z float64, R, G, B, Intensity, Classification uint8) *OctElement {
 	return &OctElement{
-		X: X,
-		Y: Y,
-		Z: Z,
-		R: R,
-		G: G,
-		B: B,
-		Intensity: Intensity,
+		X:              X,
+		Y:              Y,
+		Z:              Z,
+		R:              R,
+		G:              G,
+		B:              B,
+		Intensity:      Intensity,
 		Classification: Classification,
 	}
 }

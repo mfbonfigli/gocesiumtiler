@@ -61,6 +61,7 @@ func Convert(sourceSrid int, targetSrid int, coord structs.Coordinate) (structs.
 	}, err
 }
 
+// Converts the input coordinate from the given srid to EPSG:4326 srid
 func ConvertToWGS84Cartesian(coord structs.Coordinate, sourceSrid int) (structs.Coordinate, error) {
 	res, err := Convert(sourceSrid, 4326, coord)
 	if err != nil {
