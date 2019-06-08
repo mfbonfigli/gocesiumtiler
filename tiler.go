@@ -8,6 +8,7 @@ import (
 	lidario "go_cesium_tiler/lasread"
 	"go_cesium_tiler/structs/octree"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -54,7 +55,7 @@ func RunTiler(opts *octree.TilerOptions) error {
 	}
 	if opts.EnableGeoidZCorrection {
 		// TODO: Using a cell size of 1.0 but should be tuned according to the input coords
-		eFixer := converters.NewElevationFixer(opts.Srid, 1.0)
+		eFixer := converters.NewElevationFixer(4326, 360/6371000*math.Pi*2)
 		zCorrectionAlg = func(lat, lon, z float64) float64 {
 			zfix, err := eFixer.GetCorrectedElevation(lat, lon, z)
 			if err != nil {
@@ -62,6 +63,13 @@ func RunTiler(opts *octree.TilerOptions) error {
 			}
 			return zfix + opts.ZOffset
 		}
+	}
+
+	// Define loader strategy
+	var loader octree.Loader
+	loader = octree.NewRandomLoader()
+	if opts.Strategy == octree.BoxedRandom {
+		loader = octree.NewRandomBoxLoader()
 	}
 
 	// load las points in octree buffer
@@ -72,14 +80,16 @@ func RunTiler(opts *octree.TilerOptions) error {
 		// Reading files
 		LogOutput("Processing file " + strconv.Itoa(i+1) + "/" + strconv.Itoa(len(lasFiles)))
 		LogOutput("> reading data from las file...", filepath.Base(fileName))
-		err := loadLasInOctree(fileName, OctTree, zCorrectionAlg)
+
+		err := loadLasInOctree(fileName, OctTree, zCorrectionAlg, opts, loader)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		// Build tree hierarchical structure
 		LogOutput("> building data structure...")
-		err = OctTree.BuildTree()
+		//err = OctTree.BuildTree()
+		err = OctTree.Build(loader)
 		if err != nil {
 			return err
 		}
@@ -98,15 +108,9 @@ func RunTiler(opts *octree.TilerOptions) error {
 }
 
 // Extracts all the points from the given LAS file and loads them in the given octree
-func loadLasInOctree(fileName string, OctTree *octree.OctTree, zCorrectionAlg func(lat, lon, z float64) float64) error {
+func loadLasInOctree(fileName string, OctTree *octree.OctTree, zCorrectionAlg func(lat, lon, z float64) float64, opts *octree.TilerOptions, loader octree.Loader) error {
 	// Read las file and obtaining list of OctElements
-	pts, err := readLas(fileName, zCorrectionAlg)
-	if err != nil {
-		return err
-	}
-
-	// Load items into octree
-	err = OctTree.AddItems(pts)
+	err := readLas(fileName, zCorrectionAlg, opts, loader)
 	if err != nil {
 		return err
 	}
@@ -114,15 +118,16 @@ func loadLasInOctree(fileName string, OctTree *octree.OctTree, zCorrectionAlg fu
 }
 
 // Reads the given las file and preloads data in a list of OctElements
-func readLas(file string, zCorrection func(lat, lon, z float64) float64) ([]octree.OctElement, error) {
+func readLas(file string, zCorrection func(lat, lon, z float64) float64, opts *octree.TilerOptions, loader octree.Loader) error {
 	var lf *lidario.LasFile
 	var err error
-	lf, err = lidario.NewLasFileForTiler(file, zCorrection)
+	lf, err = lidario.NewLasFileForTiler(file, zCorrection, opts.Srid, loader)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	opts.Srid = 4326
 	defer func() { _ = lf.Close() }()
-	return lf.GetOctElements(), nil
+	return nil
 }
 
 // Exports the point cloud represented by the given built octree into 3D tiles data structure according to the options

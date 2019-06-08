@@ -28,6 +28,7 @@ func main() {
 	recursiveFolderProcessing := flag.Bool("recursive", false, "Enables recursive lookup for all .las files inside the subfolders")
 	silent := flag.Bool("silent", false, "suppresses all the non-error messages")
 	logTimestamp := flag.Bool("timestamp", false, "adds timestamp to log messages")
+	hq := flag.Bool("hq", false, "enables the high quality random pick algorithm")
 	help := flag.Bool("help", false, "prints the help")
 
 	flag.Parse()
@@ -50,6 +51,11 @@ func main() {
 	log_enabled = !*silent
 	timestamp_enabled = *logTimestamp
 
+	// eventually set HQ strategy
+	strategy := octree.FullyRandom
+	if *hq {
+		strategy = octree.BoxedRandom
+	}
 	// Put args inside a TilerOptions struct
 	opts := octree.TilerOptions{
 		Input:                  *input,
@@ -61,6 +67,7 @@ func main() {
 		FolderProcessing:       *folderProcessing,
 		Recursive:              *recursiveFolderProcessing,
 		Silent:                 *silent,
+		Strategy:               strategy,
 	}
 
 	// Validate TilerOptions

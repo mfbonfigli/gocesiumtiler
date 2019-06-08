@@ -1,5 +1,6 @@
 package octree
 
+import "C"
 import (
 	"fmt"
 	"strings"
@@ -18,7 +19,7 @@ type OctNode struct {
 	LocalChildrenCount  int32
 	Opts                *TilerOptions
 	IsLeaf              bool
-	Initialized			bool
+	Initialized         bool
 	sync.RWMutex
 }
 
@@ -32,7 +33,7 @@ func NewOctNode(boundingBox *BoundingBox, opts *TilerOptions, depth uint8, paren
 		GlobalChildrenCount: 0,
 		LocalChildrenCount:  0,
 		IsLeaf:              true,
-		Initialized:			 false,
+		Initialized:         false,
 	}
 
 	return &octNode
@@ -40,14 +41,14 @@ func NewOctNode(boundingBox *BoundingBox, opts *TilerOptions, depth uint8, paren
 
 // Adds an OctElement to the OctNode eventually propagating it to the OctNode relevant children
 func (octNode *OctNode) AddOctElement(element *OctElement) {
-	if atomic.LoadInt32(&octNode.LocalChildrenCount)==0 {
+	if atomic.LoadInt32(&octNode.LocalChildrenCount) == 0 {
 		octNode.Lock()
-			for i:=uint8(0); i<8;i++ {
-				if octNode.Children[i] == nil {
-					octNode.Children[i] = NewOctNode(octNode.BoundingBox.getOctantBoundingBox(&i), octNode.Opts, octNode.Depth+1, octNode)
-				}
+		for i := uint8(0); i < 8; i++ {
+			if octNode.Children[i] == nil {
+				octNode.Children[i] = NewOctNode(octNode.BoundingBox.getOctantBoundingBox(&i), octNode.Opts, octNode.Depth+1, octNode)
 			}
-			octNode.Initialized = true
+		}
+		octNode.Initialized = true
 		octNode.Unlock()
 	}
 	if atomic.LoadInt32(&octNode.LocalChildrenCount) < octNode.Opts.MaxNumPointsPerNode {
@@ -67,29 +68,6 @@ func (octNode *OctNode) AddOctElement(element *OctElement) {
 	atomic.AddInt64(&octNode.GlobalChildrenCount, 1)
 }
 
-// Gets the children OctNode deemed to contain the given OctElement according to its coordinates
-func (octNode *OctNode) getSubOctNodeContainingElement(element *OctElement) *OctNode {
-	octant := octNode.BoundingBox.getOctantFromElement(element)
-
-	// Acquire read lock on node
-	octNode.RLock()
-	child := octNode.Children[octant]
-	octNode.RUnlock()
-	if child != nil {
-		return child
-	}
-
-	// Child not found. Create it.
-	// First acquire Write lock and defer lock release
-	octNode.Lock()
-	defer octNode.Unlock()
-	if octNode.Children[octant] == nil {
-		octNode.Children[octant] = NewOctNode(octNode.BoundingBox.getOctantBoundingBox(&octant), octNode.Opts, octNode.Depth + 1, octNode)
-		octNode.IsLeaf = false
-	}
-	return octNode.Children[octant]
-}
-
 // Prints the summary of the node contents in the console
 func (octNode *OctNode) PrintStructure() {
 	fmt.Println(strings.Repeat(" ", int(octNode.Depth)-1)+"-", "element no:", octNode.LocalChildrenCount, "leaf:", octNode.IsLeaf)
@@ -99,4 +77,3 @@ func (octNode *OctNode) PrintStructure() {
 		}
 	}
 }
-

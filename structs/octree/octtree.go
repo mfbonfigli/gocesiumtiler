@@ -3,10 +3,8 @@ package octree
 import (
 	"errors"
 	"math"
-	"math/rand"
 	"runtime"
 	"sync"
-	"time"
 )
 
 // Represents an OctTree of OctElements and contains informations needed
@@ -58,53 +56,39 @@ func (octTree *OctTree) AddItems(items []OctElement) error {
 
 // Builds the hierarchical tree structure propagating the added items according to the TilerOptions provided
 // during initialization
-func (octTree *OctTree) BuildTree() error {
+func (octTree *OctTree) Build(loader Loader) error {
 	if octTree.Built {
 		return errors.New("octree already Built")
 	}
-	octNode := NewOctNode(NewBoundingBox(octTree.minX, octTree.maxX, octTree.minY, octTree.maxY, octTree.minZ, octTree.maxZ), octTree.Opts, 1, nil)
+	box := loader.GetBounds()
+	octNode := NewOctNode(NewBoundingBox(box[0], box[1], box[2], box[3], box[4], box[5]), octTree.Opts, 1, nil)
 	octTree.RootNode = *octNode
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(octTree.itemsToAdd), func(i, j int) {
-		octTree.itemsToAdd[i], octTree.itemsToAdd[j] = octTree.itemsToAdd[j], octTree.itemsToAdd[i]
-	})
+	loader.Initialize()
 	var wg sync.WaitGroup
 	//wg.Add(len(octTree.itemsToAdd))
-
 	N := runtime.NumCPU()
-	size:= len(octTree.itemsToAdd)/N
-	for i:=0; i<N; i++ {
-		start := i*size
-		end := (i+1)*size
-		if i == N-1 {
-			end = len(octTree.itemsToAdd)
-		}
-		go func(start int, end int) {
-			wg.Add(1)
-			for j:=start;j<end;j++{
-				octTree.RootNode.AddOctElement(&octTree.itemsToAdd[j])
+	for i := 0; i < N; i++ {
+		wg.Add(1)
+		go func(loader Loader) {
+			for {
+				val, shouldContinue := loader.GetNext()
+				if val != nil {
+					octTree.RootNode.AddOctElement(val)
+				}
+				if !shouldContinue {
+					break
+				}
 			}
 			wg.Done()
-		}(start, end)
+		}(loader)
 	}
-	/*sem := make(chan struct{}, N)
-
-	for i := 0; i < len(octTree.itemsToAdd); i++ {
-		sem <- struct{}{}
-		go func(i int) {
-			octTree.RootNode.AddOctElement(&octTree.itemsToAdd[i])
-			wg.Done()
-			<-sem
-		}(i)
-	}*/
-
 	wg.Wait()
-
 	octTree.itemsToAdd = nil
 	octTree.Built = true
 	return nil
 }
 
+// Prints the tree structure
 func (octTree *OctTree) PrintStructure() {
 	if octTree.Built {
 		octTree.RootNode.PrintStructure()

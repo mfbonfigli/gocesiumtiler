@@ -13,6 +13,10 @@ const toDeg = 180 / math.Pi
 
 // Converts the given coordinate from the given source Srid to the given target srid.
 func Convert(sourceSrid int, targetSrid int, coord structs.Coordinate) (structs.Coordinate, error) {
+	if sourceSrid == targetSrid {
+		return coord, nil
+	}
+
 	src, err := initProjection(sourceSrid)
 	if err != nil {
 		return coord, err

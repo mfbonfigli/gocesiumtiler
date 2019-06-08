@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"go_cesium_tiler/structs/octree"
 	"io"
 	"math"
 	"os"
@@ -28,7 +27,6 @@ type LasFile struct {
 	VlrData                []VLR
 	geokeys                GeoKeys
 	pointData              []PointRecord0
-	pointDataOctElement    []octree.OctElement
 	gpsData                []float64
 	rgbData                []RgbData
 	usePointIntensity      bool
@@ -1450,7 +1448,7 @@ type LasHeader struct {
 
 func (h LasHeader) String() string {
 	var buffer bytes.Buffer
-	// buffer.WriteString("Las File Header:\n")
+	// Buffer.WriteString("Las File Header:\n")
 
 	s := fmt.Sprintf("File Signature: %v\n", h.FileSignature)
 	buffer.WriteString(s)
@@ -1972,7 +1970,7 @@ type RgbData struct {
 	Blue  uint16
 }
 
-// Creates a fixed-length string with buffer characters as null
+// Creates a fixed-length string with Buffer characters as null
 func fixedLengthString(s string, length int) string {
 	var b bytes.Buffer
 	for n := 0; n < length; n++ {

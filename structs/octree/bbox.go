@@ -1,5 +1,10 @@
 package octree
 
+import "math"
+
+const toRadians = math.Pi / 180
+const toDeg = 180 / math.Pi
+
 type BoundingBox struct {
 	Xmin, Xmax, Ymin, Ymax, Zmin, Zmax, Xmid, Ymid, Zmid float64
 }
@@ -50,7 +55,23 @@ func newBoundingBox(parent *BoundingBox, octant *uint8) *BoundingBox {
 }
 
 func (bbox *BoundingBox) GetVolume() float64 {
-	return (bbox.Xmax - bbox.Xmin) * (bbox.Ymax - bbox.Ymin) * (bbox.Zmax - bbox.Zmin)
+	b := bbox.distance(bbox.Xmin, bbox.Xmax, bbox.Ymin, bbox.Ymin, 0, 0)
+	h := bbox.distance(bbox.Xmin, bbox.Xmin, bbox.Ymin, bbox.Ymax, 0, 0)
+	e := bbox.Zmax - bbox.Zmin
+	return b * h * e
+	//return (bbox.Xmax - bbox.Xmin) * (bbox.Ymax - bbox.Ymin) * (bbox.Zmax - bbox.Zmin)
+}
+
+func (bbox *BoundingBox) distance(lat1, lat2, lon1, lon2, el1, el2 float64) float64 {
+	R := 6378137 / 1000; // Radius of the earth
+	latDistance := (lat2 - lat1) * toRadians
+	lonDistance := (lon2 - lon1) * toRadians
+	a := math.Sin(latDistance/2)*math.Sin(latDistance/2) + math.Cos(lat1*toRadians)*math.Cos(lat2*toRadians)*math.Sin(lonDistance/2)*math.Sin(lonDistance/2);
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	distance := float64(R) * c * 1000 // convert to meters
+	height := el1 - el2
+	distance = distance*distance + height*height
+	return math.Sqrt(distance)
 }
 
 func (bbox *BoundingBox) getOctantFromElement(element *OctElement) uint8 {

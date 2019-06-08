@@ -11,4 +11,5 @@ type TilerOptions struct {
 	Recursive              bool
 	SubfolderPrefix        string
 	Silent                 bool
+	Strategy               LoaderStrategy
 }
