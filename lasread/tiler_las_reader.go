@@ -175,5 +175,6 @@ func (las *LasFile) readPointsOctElem(zCorrection func(lat, lon, z float64) floa
 		startingPoint = endingPoint + 1
 	}
 	wg.Wait()
+	converters.DeallocateProjection(inSrid)
 	return nil
 }

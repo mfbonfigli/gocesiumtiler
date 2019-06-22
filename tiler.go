@@ -54,7 +54,7 @@ func RunTiler(opts *octree.TilerOptions) error {
 		return z + opts.ZOffset
 	}
 	if opts.EnableGeoidZCorrection {
-		// TODO: Using a cell size of 1.0 but should be tuned according to the input coords
+		// TODO: Configurable cell size
 		eFixer := converters.NewElevationFixer(4326, 360/6371000*math.Pi*2)
 		zCorrectionAlg = func(lat, lon, z float64) float64 {
 			zfix, err := eFixer.GetCorrectedElevation(lat, lon, z)
@@ -103,6 +103,7 @@ func RunTiler(opts *octree.TilerOptions) error {
 			return err
 		}
 		LogOutput("> done processing", filepath.Base(fileName))
+		converters.DeallocateProjections()
 	}
 	return nil
 }

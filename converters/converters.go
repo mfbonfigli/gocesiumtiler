@@ -125,3 +125,19 @@ func initProjection(code int) (*proj.Proj, error) {
 	}
 	return val.Projection, nil
 }
+
+func DeallocateProjection(code int) {
+	val, ok := EpsgDatabase[code]
+	if ok {
+		val.Projection.Close()
+		EpsgDatabase[code].Projection = nil;
+	}
+}
+
+func DeallocateProjections() {
+	for _, val := range EpsgDatabase {
+		if val.Projection != nil {
+			val.Projection.Close()
+		}
+	}
+}
