@@ -25,6 +25,7 @@ func NewBoundingBox(Xmin, Xmax, Ymin, Ymax, Zmin, Zmax float64) *BoundingBox {
 	return &bbox
 }
 
+// Computes a bounding box from the given box and the given octant index
 func newBoundingBox(parent *BoundingBox, octant *uint8) *BoundingBox {
 	var xMin, xMax, yMin, yMax, zMin, zMax float64
 	switch *octant {
@@ -54,6 +55,7 @@ func newBoundingBox(parent *BoundingBox, octant *uint8) *BoundingBox {
 	return NewBoundingBox(xMin, xMax, yMin, yMax, zMin, zMax)
 }
 
+// Returns the approximate volume of the given bounding box, assuming that it is storing EPSG:4978 coordinates
 func (bbox *BoundingBox) GetVolume() float64 {
 	b := bbox.distance(bbox.Xmin, bbox.Xmax, bbox.Ymin, bbox.Ymin, 0, 0)
 	h := bbox.distance(bbox.Xmin, bbox.Xmin, bbox.Ymin, bbox.Ymax, 0, 0)
@@ -74,6 +76,7 @@ func (bbox *BoundingBox) distance(lat1, lat2, lon1, lon2, el1, el2 float64) floa
 	return math.Sqrt(distance)
 }
 
+// Returns the index of the octant that contains the given OctElement within this BoundingBox
 func (bbox *BoundingBox) getOctantFromElement(element *OctElement) uint8 {
 	var result uint8 = 0
 	if float64(element.X) > bbox.Xmid {
@@ -88,10 +91,12 @@ func (bbox *BoundingBox) getOctantFromElement(element *OctElement) uint8 {
 	return result
 }
 
+// Returns a bounding box from the given box and the given octant index
 func (bbox *BoundingBox) getOctantBoundingBox(octant *uint8) *BoundingBox {
 	return newBoundingBox(bbox, octant)
 }
 
+// Checks if the bounding box contains the given element
 func (bbox *BoundingBox) CanContain(e *OctElement) bool {
 	return (e.X >= bbox.Xmin && e.X <= bbox.Xmax) &&
 		(e.Y >= bbox.Ymin && e.Y <= bbox.Ymax) &&

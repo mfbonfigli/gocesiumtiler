@@ -8,7 +8,8 @@ import (
 	"sync/atomic"
 )
 
-// Contains data necessary to build the octree
+// Models a node of the octree, which can either be a leaf (a node without children nodes) or not. Each Node can contain
+// up to eight children OctNodes
 type OctNode struct {
 	Parent              *OctNode
 	BoundingBox         *BoundingBox
@@ -23,7 +24,7 @@ type OctNode struct {
 	sync.RWMutex
 }
 
-// Instantiates a new OctNode properly initializing the data
+// Instantiates a new OctNode
 func NewOctNode(boundingBox *BoundingBox, opts *TilerOptions, depth uint8, parent *OctNode) *OctNode {
 	octNode := OctNode{
 		Parent:              parent,
@@ -57,7 +58,6 @@ func (octNode *OctNode) AddOctElement(element *OctElement) {
 		atomic.AddInt32(&octNode.LocalChildrenCount, 1)
 		octNode.Unlock()
 	} else {
-		//octNode.getSubOctNodeContainingElement(element).AddOctElement(element)
 		octNode.Children[octNode.BoundingBox.getOctantFromElement(element)].AddOctElement(element)
 		if octNode.IsLeaf {
 			octNode.Lock()

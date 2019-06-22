@@ -7,8 +7,8 @@ import (
 	"sync"
 )
 
-// Represents an OctTree of OctElements and contains informations needed
-// to propagate points in the tree.
+// Represents an OctTree of OctElements and contains all information needed
+// to propagate points in the tree
 type OctTree struct {
 	itemsToAdd                         []OctElement
 	RootNode                           OctNode
@@ -32,6 +32,8 @@ func NewOctTree(opts *TilerOptions) *OctTree {
 	}
 }
 
+// Internally update the bounds of the tree.
+// TODO: These could be read directly from the LAS file
 func (octTree *OctTree) recomputeBoundsFromElement(element *OctElement) {
 	octTree.minX = math.Min(float64(element.X), octTree.minX)
 	octTree.minY = math.Min(float64(element.Y), octTree.minY)
@@ -39,19 +41,6 @@ func (octTree *OctTree) recomputeBoundsFromElement(element *OctElement) {
 	octTree.maxX = math.Max(float64(element.X), octTree.maxX)
 	octTree.maxY = math.Max(float64(element.Y), octTree.maxY)
 	octTree.maxZ = math.Max(float64(element.Z), octTree.maxZ)
-}
-
-// Adds a splice of pointers to OctElement instances to the OctTree inner list of items to be initialized
-func (octTree *OctTree) AddItems(items []OctElement) error {
-	if octTree.Built {
-		return errors.New("cannot add items to a Built octree")
-	}
-	octTree.itemsToAdd = append(octTree.itemsToAdd, items...)
-	for _, e := range items {
-		octTree.recomputeBoundsFromElement(&e)
-	}
-	octTree.Built = false
-	return nil
 }
 
 // Builds the hierarchical tree structure propagating the added items according to the TilerOptions provided

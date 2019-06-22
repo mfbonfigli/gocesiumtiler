@@ -13,6 +13,8 @@ const (
 	BoxedRandom LoaderStrategy = 1
 )
 
+// A Loader contains methods to store and properly shuffle OctElements for subsequent retrieval in the generation of the
+// tree structure
 type Loader interface {
 	// Adds an OctElement to the Loader
 	AddElement(e *OctElement)

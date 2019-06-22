@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-var log_enabled = true
-var timestamp_enabled = true
+var logEnabled = true
+var timestampEnabled = true
 
 func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
@@ -48,8 +48,8 @@ func main() {
 	}
 
 	// set logging and timestamp logging
-	log_enabled = !*silent
-	timestamp_enabled = *logTimestamp
+	logEnabled = !*silent
+	timestampEnabled = *logTimestamp
 
 	// eventually set HQ strategy
 	strategy := octree.FullyRandom
@@ -76,7 +76,7 @@ func main() {
 	}
 
 	// Starts the tiler
-	defer timeTrack(time.Now(), "tiler")
+	// defer timeTrack(time.Now(), "tiler")
 	err := RunTiler(&opts)
 	if err != nil {
 		log.Fatal("Error while tiling: ", err)
@@ -86,8 +86,7 @@ func main() {
 }
 
 // Validates the input options provided to the command line tool checking
-// that input and output folders exists and that the specified color depth
-// is valid
+// that input and output folders/files exist
 func validateOptions(opts *octree.TilerOptions) (string, bool) {
 	if _, err := os.Stat(opts.Input); os.IsNotExist(err) {
 		return "Input file/folder not found", false
@@ -100,14 +99,14 @@ func validateOptions(opts *octree.TilerOptions) (string, bool) {
 
 func timeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
-	if log_enabled {
+	if logEnabled {
 		log.Printf("%s took %s", name, elapsed)
 	}
 }
 
 func LogOutput(val ...interface{}) {
-	if log_enabled {
-		if timestamp_enabled {
+	if logEnabled {
+		if timestampEnabled {
 			fmt.Print("[" + time.Now().Format("2006-01-02 15.04:05.000") + "] ")
 			fmt.Println(val...)
 		} else {

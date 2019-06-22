@@ -47,13 +47,13 @@ func Consume(workchan chan *WorkUnit, errchan chan error, wg *sync.WaitGroup) {
 // Takes a workunit and writes the corresponding content.pnts and tileset.json files
 func doWork(workUnit *WorkUnit) error {
 	// writes the content.pnts file
-	err := writeBinaryPnts(*workUnit)
+	err := writeBinaryPntsFile(*workUnit)
 	if err != nil {
 		return err
 	}
 	if !workUnit.OctNode.IsLeaf {
 		// if the node has children also writes the tileset.json file
-		err := writeJsonTileset(*workUnit)
+		err := writeTilesetJsonFile(*workUnit)
 		if err != nil {
 			return err
 		}
@@ -62,7 +62,7 @@ func doWork(workUnit *WorkUnit) error {
 }
 
 // Writes a content.pnts binary files from the given WorkUnit
-func writeBinaryPnts(workUnit WorkUnit) error {
+func writeBinaryPntsFile(workUnit WorkUnit) error {
 	parentFolder := workUnit.BasePath
 	node := workUnit.OctNode
 
@@ -131,12 +131,12 @@ func writeBinaryPnts(workUnit WorkUnit) error {
 	positionBytes := utils.ConvertTruncateFloat64ToFloat32ByteArray(coords)
 
 	// Feature table
-	featureTableStr := generateFeatureTableJson(avgX, avgY, avgZ, pointNo, 0)
+	featureTableStr := generateFeatureTableJsonContent(avgX, avgY, avgZ, pointNo, 0)
 	featureTableLen := len(featureTableStr)
 	featureTableBytes := []byte(featureTableStr)
 
 	// Batch table
-	batchTableStr := generateBatchTableJson(pointNo, 0)
+	batchTableStr := generateBatchTableJsonContent(pointNo, 0)
 	batchTableLen := len(batchTableStr)
 	batchTableBytes := []byte(batchTableStr)
 
@@ -167,7 +167,7 @@ func writeBinaryPnts(workUnit WorkUnit) error {
 }
 
 // Generates the json representation of the feature table
-func generateFeatureTableJson(x, y, z float64, pointNo int, spaceNo int) string {
+func generateFeatureTableJsonContent(x, y, z float64, pointNo int, spaceNo int) string {
 	sb := ""
 	sb += "{\"POINTS_LENGTH\":" + strconv.Itoa(pointNo) + ","
 	sb += "\"RTC_CENTER\":[" + fmt.Sprintf("%f", x) + strings.Repeat("0", spaceNo)
@@ -177,13 +177,13 @@ func generateFeatureTableJson(x, y, z float64, pointNo int, spaceNo int) string 
 	headerByteLength := len([]byte(sb))
 	paddingSize := headerByteLength % 4
 	if paddingSize != 0 {
-		return generateFeatureTableJson(x, y, z, pointNo, 4-paddingSize)
+		return generateFeatureTableJsonContent(x, y, z, pointNo, 4-paddingSize)
 	}
 	return sb
 }
 
 // Generates the json representation of the batch table
-func generateBatchTableJson(pointNumber, spaceNumber int) string {
+func generateBatchTableJsonContent(pointNumber, spaceNumber int) string {
 	sb := ""
 	sb += "{\"INTENSITY\":" + "{\"byteOffset\":" + "0" + ", \"componentType\":\"UNSIGNED_BYTE\", \"type\":\"SCALAR\"},"
 	sb += "\"CLASSIFICATION\":" + "{\"byteOffset\":" + strconv.Itoa(pointNumber) + ", \"componentType\":\"UNSIGNED_BYTE\", \"type\":\"SCALAR\"}}"
@@ -191,13 +191,13 @@ func generateBatchTableJson(pointNumber, spaceNumber int) string {
 	headerByteLength := len([]byte(sb))
 	paddingSize := headerByteLength % 4
 	if paddingSize != 0 {
-		return generateBatchTableJson(pointNumber, 4-paddingSize)
+		return generateBatchTableJsonContent(pointNumber, 4-paddingSize)
 	}
 	return sb
 }
 
 // Writes the tileset.json file for the given WorkUnit
-func writeJsonTileset(workUnit WorkUnit) error {
+func writeTilesetJsonFile(workUnit WorkUnit) error {
 	parentFolder := workUnit.BasePath
 	node := workUnit.OctNode
 
@@ -211,7 +211,7 @@ func writeJsonTileset(workUnit WorkUnit) error {
 
 	// tileset.json file
 	file := path.Join(parentFolder, "tileset.json")
-	jsonData, err := createTilesetJson(node, workUnit.Opts)
+	jsonData, err := generateTilesetJsonContent(node, workUnit.Opts)
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,7 @@ func writeJsonTileset(workUnit WorkUnit) error {
 }
 
 // Generates the tileset.json content for the given octnode and tileroptions
-func createTilesetJson(node *octree.OctNode, opts *octree.TilerOptions) ([]byte, error) {
+func generateTilesetJsonContent(node *octree.OctNode, opts *octree.TilerOptions) ([]byte, error) {
 	if !node.IsLeaf {
 		tileset := Tileset{}
 		tileset.Asset = Asset{Version: "0.0"}

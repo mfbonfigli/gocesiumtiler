@@ -13,6 +13,7 @@ type OctElement struct {
 	Classification uint8
 }
 
+// Builds a new OctElement from the given coordinates, colors, intensity and classification values
 func NewOctElement(X, Y, Z float64, R, G, B, Intensity, Classification uint8) *OctElement {
 	return &OctElement{
 		X:              X,

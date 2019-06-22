@@ -126,6 +126,7 @@ func initProjection(code int) (*proj.Proj, error) {
 	return val.Projection, nil
 }
 
+// Releases a projection object from memory
 func DeallocateProjection(code int) {
 	val, ok := EpsgDatabase[code]
 	if ok {
@@ -134,6 +135,7 @@ func DeallocateProjection(code int) {
 	}
 }
 
+// Releases all projection objects from memory
 func DeallocateProjections() {
 	for _, val := range EpsgDatabase {
 		if val.Projection != nil {
