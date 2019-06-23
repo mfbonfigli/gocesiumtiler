@@ -7,9 +7,9 @@ package lidario
 
 import (
 	"encoding/binary"
-	"go_cesium_tiler/converters"
-	"go_cesium_tiler/structs"
-	"go_cesium_tiler/structs/octree"
+	"gocesiumtiler/converters"
+	"gocesiumtiler/structs"
+	"gocesiumtiler/structs/octree"
 	"io"
 	"log"
 	"os"

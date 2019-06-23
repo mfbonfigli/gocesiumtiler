@@ -24,7 +24,7 @@ func init() {
 	exPath := filepath.Dir(ex)
 
 	// Loading Earth Gravitational Model data
-	err = GH.load(path.Join(exPath, "static\\egm180.nor"))
+	err = GH.load(path.Join(exPath, "static","egm180.nor"))
 	if err != nil {
 		log.Fatal("cannot initialize earth gravitational model", err)
 	}

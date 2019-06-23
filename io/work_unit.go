@@ -1,6 +1,6 @@
 package io
 
-import "go_cesium_tiler/structs/octree"
+import "gocesiumtiler/structs/octree"
 
 // Contains the minimal data needed to produce a single 3d tile, i.e. a binary content.pnts file and a tileset.json file
 type WorkUnit struct {

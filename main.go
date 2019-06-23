@@ -24,7 +24,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"go_cesium_tiler/structs/octree"
+	"gocesiumtiler/structs/octree"
 	"log"
 	"os"
 	"time"
