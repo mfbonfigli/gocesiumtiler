@@ -1,4 +1,23 @@
-// Copyright 2019 Massimo Federico Bonfigli
+/*
+ * This file is part of the Go Cesium Point Cloud Tiler distribution (https://github.com/mfbonfigli/gocesiumtiler).
+ * Copyright (c) 2019 Massimo Federico Bonfigli - m.federico.bonfigli@gmail.com
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License Version 3 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * This software also uses third party components. You can find information
+ * on their credits and licensing in the file LICENSE-3RD-PARTIES.md that
+ * you should have received togheter with the source code.
+ */
 
 package main
 
