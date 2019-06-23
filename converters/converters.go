@@ -3,8 +3,8 @@ package converters
 import (
 	"errors"
 	"github.com/xeonx/proj4"
-	"gocesiumtiler/structs"
-	"gocesiumtiler/structs/octree"
+	"github.com/mfbonfigli/gocesiumtiler/structs"
+	"github.com/mfbonfigli/gocesiumtiler/structs/octree"
 	"math"
 )
 

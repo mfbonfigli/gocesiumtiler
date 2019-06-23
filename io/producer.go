@@ -1,7 +1,7 @@
 package io
 
 import (
-	"gocesiumtiler/structs/octree"
+	"github.com/mfbonfigli/gocesiumtiler/structs/octree"
 	"path"
 	"path/filepath"
 	"strconv"
