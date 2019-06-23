@@ -42,21 +42,29 @@ in the PATH environment variable. More information on cgo compiler are available
 
 To run just execute the binary tool with the appropriate flags.
 
+It is suggested to try use the `-hq` flag as in most scenarios it does not slow down too much the tiling
+process but it produces tiles that have better quality. One should experiment to decide whether it is worth using or not.
+
+To show help run:
+```
+gocesiumtiler -help
+```
+
 ### Flags
 
 ```
 -input=<path>           input las file or folder containing las files. Required.
 -output=<path>          output folder where to write cesium 3d tiles output. Required.
--srid=<epsg-code-no>    Epsg code number of input coordinates (e.g. 4326 for EPSG:4326) [default: 4326]
--zoffset=<m>            Vertical offset to apply to points, in meters [default: 0]
--maxpts=<n>             Maximum number of points per each tile [default: 50000]
--geoid                  Enables the geoid to ellipsoid elevation conversion
--folder                 Enables the processing of all files in input folder
--recursive              If folder processing is enabled, recursively processes all LAS files found in subfolders
--silent                 Suppresses all non error messages
--timestamp              Adds a timestamp to console messages
--hq                     Enables the use of a higher quality (but slightly slower) point sampling algorithm.
--help                   Prints the help
+-srid=<epsg-code-no>    epsg code number of input coordinates (e.g. 4326 for EPSG:4326) [default: 4326]
+-zoffset=<m>            vertical offset to apply to points, in meters [default: 0]
+-maxpts=<n>             maximum number of points per each tile [default: 50000]
+-geoid                  enables the geoid to ellipsoid elevation conversion
+-folder                 enables the processing of all files in input folder
+-recursive              if folder processing is enabled, recursively processes all LAS files found in subfolders
+-silent                 suppresses all non error messages
+-timestamp              adds a timestamp to console messages
+-hq                     enables the use of a higher quality (but slightly slower) point sampling algorithm.
+-help                   prints the help
 ```
 
 ### Usage examples:
@@ -65,14 +73,14 @@ Recursively convert all LAS files in folder `C:\las`, write output tilesets in f
 in EPSG:32633, convert elevation from above the geoid to above the ellipsoid and use higher quality sampling algorithm:
 
 ```
-go-cesium-tiler -input=C:\las -output=C:\out -srid=32633 -geoid -folder -recursive -hq
+gocesiumtiler -input=C:\las -output=C:\out -srid=32633 -geoid -folder -recursive -hq
 ```
 
 Recursively convert all LAS files in `C:\las\file.las`, write output tileset in folder `C:\out`, assume input coordinates
 expressed in EPSG:4326, apply an offset of 10 meters to elevation of points and allow to store up to 100000 points per tile:
 
 ```
-go-cesium-tiler -input=C:\las\file.las -output=C:\out -zoffset=10 -maxpts=100000
+gocesiumtiler -input=C:\las\file.las -output=C:\out -zoffset=10 -maxpts=100000
 ```
 
 ## Future work and support
