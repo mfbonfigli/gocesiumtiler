@@ -18,9 +18,8 @@ Information on point intensity and classification is stored in the output tilese
 propeties named `INTENSITY` and `CLASSIFICATION`.
 
 
-News
-=======
-### Version 1.0.0 release
+## News
+##### Version 1.0.0 release
 * First public release
 
 ## Precompiled Binaries
