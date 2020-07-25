@@ -18,7 +18,10 @@ Information on point intensity and classification is stored in the output tilese
 propeties named `INTENSITY` and `CLASSIFICATION`.
 
 
-## News
+## Changelog
+##### Version 1.0.1 
+* Fixed a crash occurring when converting point clouds without executing any coordinate system conversion.
+
 ##### Version 1.0.0 release
 * First public release
 
