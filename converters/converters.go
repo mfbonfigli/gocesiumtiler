@@ -129,7 +129,7 @@ func initProjection(code int) (*proj.Proj, error) {
 // Releases a projection object from memory
 func DeallocateProjection(code int) {
 	val, ok := EpsgDatabase[code]
-	if ok {
+	if ok && val.Projection != nil {
 		val.Projection.Close()
 		EpsgDatabase[code].Projection = nil;
 	}
