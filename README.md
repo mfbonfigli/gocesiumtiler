@@ -19,6 +19,9 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 
 
 ## Changelog
+##### Version 1.0.2 
+* Fixed bug preventing tileset.json from being generated if only one pnts is created
+
 ##### Version 1.0.1 
 * Fixed a crash occurring when converting point clouds without executing any coordinate system conversion.
 
