@@ -51,7 +51,7 @@ func doWork(workUnit *WorkUnit) error {
 	if err != nil {
 		return err
 	}
-	if !workUnit.OctNode.IsLeaf {
+	if !workUnit.OctNode.IsLeaf || workUnit.OctNode.Parent == nil {
 		// if the node has children also writes the tileset.json file
 		err := writeTilesetJsonFile(*workUnit)
 		if err != nil {
@@ -227,11 +227,12 @@ func writeTilesetJsonFile(workUnit WorkUnit) error {
 
 // Generates the tileset.json content for the given octnode and tileroptions
 func generateTilesetJsonContent(node *octree.OctNode, opts *octree.TilerOptions) ([]byte, error) {
-	if !node.IsLeaf {
+	if !node.IsLeaf || node.Parent  == nil {
 		tileset := Tileset{}
-		tileset.Asset = Asset{Version: "0.0"}
+		tileset.Asset = Asset{Version: "1.0"}
 		tileset.GeometricError = computeGeometricError(node)
 		root := Root{}
+		root.Children = []Child{}
 		for i, child := range node.Children {
 			if child != nil && child.GlobalChildrenCount > 0 {
 				childJson := Child{}
@@ -250,7 +251,7 @@ func generateTilesetJsonContent(node *octree.OctNode, opts *octree.TilerOptions)
 					Region: reg,
 				}
 				childJson.GeometricError = computeGeometricError(child)
-				childJson.Refine = "add"
+				childJson.Refine = "ADD"
 				root.Children = append(root.Children, childJson)
 			}
 		}
@@ -258,6 +259,17 @@ func generateTilesetJsonContent(node *octree.OctNode, opts *octree.TilerOptions)
 			Url: "content.pnts",
 		}
 		reg, err := converters.Convert2DBoundingboxToWGS84Region(node.BoundingBox, opts.Srid)
+
+		if(node.Parent  == nil && node.IsLeaf) {
+			// only one tile, no LoDs. Estimate geometric error as lenght of diagonal of region
+			var latA = reg[1]
+			var latB = reg[3]
+			var lngA = reg[0]
+			var lngB = reg[2]
+			latA = reg[1]
+			tileset.GeometricError = 6371000 * math.Acos(math.Cos(latA) * math.Cos(latB) * math.Cos(lngB - lngA) + math.Sin(latA) * math.Sin(latB))
+		}
+
 		if err != nil {
 			return nil, err
 		}
@@ -265,7 +277,7 @@ func generateTilesetJsonContent(node *octree.OctNode, opts *octree.TilerOptions)
 			Region: reg,
 		}
 		root.GeometricError = computeGeometricError(node)
-		root.Refine = "add"
+		root.Refine = "ADD"
 		tileset.Root = root
 
 		// Outputting a formatted json file
@@ -295,6 +307,7 @@ func computeGeometricError(node *octree.OctNode) float64 {
 	}
 	densityWithAllPoints := math.Pow(volume/float64(totalRenderedPoints+node.GlobalChildrenCount-int64(node.LocalChildrenCount)), 0.333)
 	densityWIthOnlyThisTile := math.Pow(volume/float64(totalRenderedPoints), 0.333)
+
 	return densityWIthOnlyThisTile - densityWithAllPoints
 
 }
