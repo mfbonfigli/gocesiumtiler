@@ -5,7 +5,7 @@ type Asset struct {
 }
 
 type Content struct {
-	Url string `json:"url"`
+	Url string `json:"uri"`
 }
 
 type BoundingVolume struct {
