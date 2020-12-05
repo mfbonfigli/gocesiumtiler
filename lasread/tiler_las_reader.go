@@ -7,12 +7,12 @@ package lidario
 
 import (
 	"encoding/binary"
+	"io"
+	"log"
 	"github.com/mfbonfigli/gocesiumtiler/converters"
 	"github.com/mfbonfigli/gocesiumtiler/structs/data"
 	"github.com/mfbonfigli/gocesiumtiler/structs/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/structs/point_loader"
-	"io"
-	"log"
 	"os"
 	"runtime"
 	"sync"
@@ -20,15 +20,15 @@ import (
 
 type LasFileLoader struct {
 	CoordinateConverter converters.CoordinateConverter
-	ElevationConverter converters.EllipsoidToGeoidZConverter
-	Loader point_loader.Loader
+	ElevationConverter  converters.EllipsoidToGeoidZConverter
+	Loader              point_loader.Loader
 }
 
 func NewLasFileLoader(coordinateConverter converters.CoordinateConverter, elevationConverter converters.EllipsoidToGeoidZConverter, loader point_loader.Loader) *LasFileLoader {
 	return &LasFileLoader{
 		CoordinateConverter: coordinateConverter,
-		ElevationConverter: elevationConverter,
-		Loader: loader,
+		ElevationConverter:  elevationConverter,
+		Loader:              loader,
 	}
 }
 
@@ -45,7 +45,7 @@ func (lasFileLoader *LasFileLoader) LoadLasFile(fileName string, zCorrection con
 }
 
 // Reads the las file and produces a LasFile struct instance loading points data into its inner list of Point
-func  (lasFileLoader *LasFileLoader) readForOctree(zCorrection converters.ElevationCorrector, inSrid int, las *LasFile) error {
+func (lasFileLoader *LasFileLoader) readForOctree(zCorrection converters.ElevationCorrector, inSrid int, las *LasFile) error {
 	var err error
 	if las.f, err = os.Open(las.fileName); err != nil {
 		return err

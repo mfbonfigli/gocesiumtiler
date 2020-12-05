@@ -6,7 +6,7 @@ import (
 )
 
 type ghElevationConverter struct {
-	GravitationalModel *egm
+	GravitationalModel  *egm
 	CoordinateConverter converters.CoordinateConverter
 }
 
@@ -14,7 +14,7 @@ func NewGHElevationConverter(coordinateConverter converters.CoordinateConverter)
 	var gravitationalModel = newDefaultEarthGravitationalModel()
 
 	return &ghElevationConverter{
-		GravitationalModel: gravitationalModel,
+		GravitationalModel:  gravitationalModel,
 		CoordinateConverter: coordinateConverter,
 	}
 }

@@ -2,9 +2,9 @@ package gh_ellipsoid_to_geoid_z_converter
 
 import (
 	"bufio"
-	"github.com/mfbonfigli/gocesiumtiler/utils"
 	"log"
 	"math"
+	"github.com/mfbonfigli/gocesiumtiler/utils"
 	"os"
 	"path"
 	"strconv"
@@ -67,7 +67,7 @@ func newEarthGraviationalModel(nmax int, wgs84 bool) *egm {
 	exPath := utils.GetExecutablePath()
 
 	// Loading Earth Gravitational Model data
-	err := model.load(path.Join(exPath, "static","egm180.nor"))
+	err := model.load(path.Join(exPath, "static", "egm180.nor"))
 	if err != nil {
 		log.Fatal("error loading gravitational model data", err)
 	}

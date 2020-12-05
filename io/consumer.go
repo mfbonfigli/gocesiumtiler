@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"math"
 	"github.com/mfbonfigli/gocesiumtiler/converters"
 	"github.com/mfbonfigli/gocesiumtiler/structs/data"
 	"github.com/mfbonfigli/gocesiumtiler/structs/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/structs/octree"
 	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
 	"github.com/mfbonfigli/gocesiumtiler/utils"
-	"io/ioutil"
-	"math"
 	"os"
 	"path"
 	"strconv"
@@ -229,7 +229,7 @@ func writeTilesetJsonFile(workUnit WorkUnit, coordinateConverter converters.Coor
 
 // Generates the tileset.json content for the given octnode and tileroptions
 func generateTilesetJsonContent(node *octree.OctNode, opts *tiler.TilerOptions, converter converters.CoordinateConverter) ([]byte, error) {
-	if !node.IsLeaf || node.Parent  == nil {
+	if !node.IsLeaf || node.Parent == nil {
 		tileset := Tileset{}
 		tileset.Asset = Asset{Version: "1.0"}
 		tileset.GeometricError = computeGeometricError(node)
@@ -262,14 +262,14 @@ func generateTilesetJsonContent(node *octree.OctNode, opts *tiler.TilerOptions, 
 		}
 		reg, err := converter.Convert2DBoundingboxToWGS84Region(node.BoundingBox, opts.Srid)
 
-		if node.Parent  == nil && node.IsLeaf {
+		if node.Parent == nil && node.IsLeaf {
 			// only one tile, no LoDs. Estimate geometric error as lenght of diagonal of region
 			var latA = reg[1]
 			var latB = reg[3]
 			var lngA = reg[0]
 			var lngB = reg[2]
 			latA = reg[1]
-			tileset.GeometricError = 6371000 * math.Acos(math.Cos(latA) * math.Cos(latB) * math.Cos(lngB - lngA) + math.Sin(latA) * math.Sin(latB))
+			tileset.GeometricError = 6371000 * math.Acos(math.Cos(latA)*math.Cos(latB)*math.Cos(lngB-lngA)+math.Sin(latA)*math.Sin(latB))
 		}
 
 		if err != nil {

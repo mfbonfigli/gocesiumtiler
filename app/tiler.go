@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"errors"
@@ -11,6 +11,7 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/structs/octree"
 	"github.com/mfbonfigli/gocesiumtiler/structs/point_loader"
 	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
+	"github.com/mfbonfigli/gocesiumtiler/utils"
 	"log"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ import (
 
 // Starts the tiling process
 func RunTiler(opts *tiler.TilerOptions) error {
-	LogOutput("Preparing list of files to process...")
+	utils.LogOutput("Preparing list of files to process...")
 
 	// Prepare list of files to process
 	lasFiles := getLasFilesToProcess(opts)
@@ -35,7 +36,7 @@ func RunTiler(opts *tiler.TilerOptions) error {
 
 	// load las points in octree buffer
 	for i, filePath := range lasFiles {
-		LogOutput("Processing file " + strconv.Itoa(i+1) + "/" + strconv.Itoa(len(lasFiles)))
+		utils.LogOutput("Processing file " + strconv.Itoa(i+1) + "/" + strconv.Itoa(len(lasFiles)))
 		processLasFile(filePath, opts, loader, elevationCorrectionAlg)
 	}
 
@@ -50,13 +51,13 @@ func processLasFile(filePath string, opts *tiler.TilerOptions, loader point_load
 	prepareDataStructure(OctTree, loader)
 	exportToCesiumTileset(OctTree, opts, getFilenameWithoutExtension(filePath))
 
-	LogOutput("> done processing", filepath.Base(filePath))
+	utils.LogOutput("> done processing", filepath.Base(filePath))
 	opts.CoordinateConverter.Cleanup()
 }
 
 func readLasData(filePath string, elevationCorrectionAlg converters.ElevationCorrector, opts *tiler.TilerOptions, loader point_loader.Loader) {
 	// Reading files
-	LogOutput("> reading data from las file...", filepath.Base(filePath))
+	utils.LogOutput("> reading data from las file...", filepath.Base(filePath))
 	err := readLas(filePath, elevationCorrectionAlg, opts, loader)
 
 	if err != nil {
@@ -66,7 +67,7 @@ func readLasData(filePath string, elevationCorrectionAlg converters.ElevationCor
 
 func prepareDataStructure(octree *octree.OctTree, loader point_loader.Loader) {
 	// Build tree hierarchical structure
-	LogOutput("> building data structure...")
+	utils.LogOutput("> building data structure...")
 	err := octree.Build(loader)
 
 	if err != nil {
@@ -75,7 +76,7 @@ func prepareDataStructure(octree *octree.OctTree, loader point_loader.Loader) {
 }
 
 func exportToCesiumTileset(octree *octree.OctTree, opts *tiler.TilerOptions, fileName string) {
-	LogOutput("> exporting data...")
+	utils.LogOutput("> exporting data...")
 	err := exportOctreeAsTileset(opts, octree, fileName)
 	if err != nil {
 		log.Fatal(err)

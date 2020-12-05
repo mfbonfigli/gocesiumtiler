@@ -27,13 +27,12 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/converters/gh_ellipsoid_to_geoid_z_converter"
 	"github.com/mfbonfigli/gocesiumtiler/converters/proj4_coordinate_converter"
 	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
+	"github.com/mfbonfigli/gocesiumtiler/app"
+	"github.com/mfbonfigli/gocesiumtiler/utils"
 	"log"
 	"os"
 	"time"
 )
-
-var logEnabled = true
-var timestampEnabled = true
 
 func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
@@ -69,8 +68,12 @@ func main() {
 	}
 
 	// set logging and timestamp logging
-	logEnabled = !*silent
-	timestampEnabled = *logTimestamp
+	if *silent {
+		utils.DisableLogger()
+	}
+	if !*logTimestamp {
+		utils.DisableLoggerTimestamp()
+	}
 
 	// eventually set HQ strategy
 	strategy := tiler.FullyRandom
@@ -105,11 +108,11 @@ func main() {
 
 	// Starts the tiler
 	// defer timeTrack(time.Now(), "tiler")
-	err := RunTiler(&opts)
+	err := app.RunTiler(&opts)
 	if err != nil {
 		log.Fatal("Error while tiling: ", err)
 	} else {
-		LogOutput("Conversion Completed")
+		utils.LogOutput("Conversion Completed")
 	}
 }
 
@@ -127,18 +130,5 @@ func validateOptions(opts *tiler.TilerOptions) (string, bool) {
 
 func timeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
-	if logEnabled {
-		log.Printf("%s took %s", name, elapsed)
-	}
-}
-
-func LogOutput(val ...interface{}) {
-	if logEnabled {
-		if timestampEnabled {
-			fmt.Print("[" + time.Now().Format("2006-01-02 15.04:05.000") + "] ")
-			fmt.Println(val...)
-		} else {
-			fmt.Println(val...)
-		}
-	}
+	utils.LogOutput(fmt.Sprintf("%s took %s", name, elapsed))
 }

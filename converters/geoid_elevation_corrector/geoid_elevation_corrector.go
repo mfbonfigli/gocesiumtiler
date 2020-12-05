@@ -1,10 +1,10 @@
 package geoid_elevation_corrector
 
 import (
-	"github.com/mfbonfigli/gocesiumtiler/converters"
-	"github.com/mfbonfigli/gocesiumtiler/converters/offset_elevation_corrector"
 	"log"
 	"math"
+	"github.com/mfbonfigli/gocesiumtiler/converters"
+	"github.com/mfbonfigli/gocesiumtiler/converters/offset_elevation_corrector"
 )
 
 type GeoidElevationCorrector struct {
