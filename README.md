@@ -33,15 +33,14 @@ Along with the source code a prebuilt binary for Windows x64 is provided for eac
 Binaries for other systems at the moment are not provided.
 
 ## Installing
-To get started with development just run
+To get started with development just clone the repository. 
 
-```
-go get github.com/mfbonfigli/gocesiumtiler
-```
+When launching a build with `go build` go modules will retrieve the required dependencies. 
 
 As the project and its dependencies make use of C code, under windows you should also have GCC compiler installed and available
 in the PATH environment variable. More information on cgo compiler are available [here](https://github.com/golang/go/wiki/cgo).
 
+Under linux you will have to have `gcc` installed. Also make sure go is configured to pass the correct flags to gcc. In particular if you encounter compilation errors similar to `undefined reference to 'sqrt'` it means that it is not linking the standard math libraries. A way to fix this is to add `-lm` to the `CGO_LDFLAGS`environment variable, for example by running `export CGO_LDFLAGS="-g -O2 -lm"`.
 ## Usage
 
 <b>The code expects to find a copy of the [static](static) folder in the same path where the compiled executable runs.</b>
