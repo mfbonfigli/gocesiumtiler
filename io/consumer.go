@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mfbonfigli/gocesiumtiler/converters"
-	"github.com/mfbonfigli/gocesiumtiler/structs"
+	"github.com/mfbonfigli/gocesiumtiler/structs/data"
+	"github.com/mfbonfigli/gocesiumtiler/structs/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/structs/octree"
+	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
 	"github.com/mfbonfigli/gocesiumtiler/utils"
 	"io/ioutil"
 	"math"
@@ -20,7 +22,7 @@ import (
 // Continually consumes WorkUnits submitted to a work channel producing corresponding content.pnts files and tileset.json files
 // continues working until work channel is closed or if an error is raised. In this last case submits the error to an error
 // channel before quitting
-func Consume(workchan chan *WorkUnit, errchan chan error, wg *sync.WaitGroup) {
+func Consume(workchan chan *WorkUnit, errchan chan error, wg *sync.WaitGroup, converter converters.CoordinateConverter) {
 	for {
 		// get work from channel
 		work, ok := <-workchan
@@ -30,7 +32,7 @@ func Consume(workchan chan *WorkUnit, errchan chan error, wg *sync.WaitGroup) {
 		}
 
 		// do work
-		err := doWork(work)
+		err := doWork(work, converter)
 
 		// if there were errors during work send in error channel and quit
 		if err != nil {
@@ -45,15 +47,15 @@ func Consume(workchan chan *WorkUnit, errchan chan error, wg *sync.WaitGroup) {
 }
 
 // Takes a workunit and writes the corresponding content.pnts and tileset.json files
-func doWork(workUnit *WorkUnit) error {
+func doWork(workUnit *WorkUnit, coordinateConverter converters.CoordinateConverter) error {
 	// writes the content.pnts file
-	err := writeBinaryPntsFile(*workUnit)
+	err := writeBinaryPntsFile(*workUnit, coordinateConverter)
 	if err != nil {
 		return err
 	}
 	if !workUnit.OctNode.IsLeaf || workUnit.OctNode.Parent == nil {
 		// if the node has children also writes the tileset.json file
-		err := writeTilesetJsonFile(*workUnit)
+		err := writeTilesetJsonFile(*workUnit, coordinateConverter)
 		if err != nil {
 			return err
 		}
@@ -62,7 +64,7 @@ func doWork(workUnit *WorkUnit) error {
 }
 
 // Writes a content.pnts binary files from the given WorkUnit
-func writeBinaryPntsFile(workUnit WorkUnit) error {
+func writeBinaryPntsFile(workUnit WorkUnit, coordinateConverter converters.CoordinateConverter) error {
 	parentFolder := workUnit.BasePath
 	node := workUnit.OctNode
 
@@ -83,17 +85,17 @@ func writeBinaryPntsFile(workUnit WorkUnit) error {
 	intensities := make([]uint8, pointNo)
 	classifications := make([]uint8, pointNo)
 
-	// Decomposing tile point properties in separate sublists for coords, colors, intensities and classifications
+	// Decomposing tile data properties in separate sublists for coords, colors, intensities and classifications
 	for i := 0; i < len(node.Items); i++ {
 		element := node.Items[i]
-		srcCoord := structs.Coordinate{
+		srcCoord := geometry.Coordinate{
 			X: &element.X,
 			Y: &element.Y,
 			Z: &element.Z,
 		}
 
-		// Convert coords according to cesium CRS
-		outCrd, err := converters.ConvertToWGS84Cartesian(srcCoord, workUnit.Opts.Srid)
+		// ConvertCoordinateSrid coords according to cesium CRS
+		outCrd, err := coordinateConverter.ConvertToWGS84Cartesian(srcCoord, workUnit.Opts.Srid)
 		if err != nil {
 			return err
 		}
@@ -197,7 +199,7 @@ func generateBatchTableJsonContent(pointNumber, spaceNumber int) string {
 }
 
 // Writes the tileset.json file for the given WorkUnit
-func writeTilesetJsonFile(workUnit WorkUnit) error {
+func writeTilesetJsonFile(workUnit WorkUnit, coordinateConverter converters.CoordinateConverter) error {
 	parentFolder := workUnit.BasePath
 	node := workUnit.OctNode
 
@@ -211,7 +213,7 @@ func writeTilesetJsonFile(workUnit WorkUnit) error {
 
 	// tileset.json file
 	file := path.Join(parentFolder, "tileset.json")
-	jsonData, err := generateTilesetJsonContent(node, workUnit.Opts)
+	jsonData, err := generateTilesetJsonContent(node, workUnit.Opts, coordinateConverter)
 	if err != nil {
 		return err
 	}
@@ -226,7 +228,7 @@ func writeTilesetJsonFile(workUnit WorkUnit) error {
 }
 
 // Generates the tileset.json content for the given octnode and tileroptions
-func generateTilesetJsonContent(node *octree.OctNode, opts *octree.TilerOptions) ([]byte, error) {
+func generateTilesetJsonContent(node *octree.OctNode, opts *tiler.TilerOptions, converter converters.CoordinateConverter) ([]byte, error) {
 	if !node.IsLeaf || node.Parent  == nil {
 		tileset := Tileset{}
 		tileset.Asset = Asset{Version: "1.0"}
@@ -243,7 +245,7 @@ func generateTilesetJsonContent(node *octree.OctNode, opts *octree.TilerOptions)
 				childJson.Content = Content{
 					Url: strconv.Itoa(i) + "/" + filename,
 				}
-				reg, err := converters.Convert2DBoundingboxToWGS84Region(child.BoundingBox, opts.Srid)
+				reg, err := converter.Convert2DBoundingboxToWGS84Region(child.BoundingBox, opts.Srid)
 				if err != nil {
 					return nil, err
 				}
@@ -258,9 +260,9 @@ func generateTilesetJsonContent(node *octree.OctNode, opts *octree.TilerOptions)
 		root.Content = Content{
 			Url: "content.pnts",
 		}
-		reg, err := converters.Convert2DBoundingboxToWGS84Region(node.BoundingBox, opts.Srid)
+		reg, err := converter.Convert2DBoundingboxToWGS84Region(node.BoundingBox, opts.Srid)
 
-		if(node.Parent  == nil && node.IsLeaf) {
+		if node.Parent  == nil && node.IsLeaf {
 			// only one tile, no LoDs. Estimate geometric error as lenght of diagonal of region
 			var latA = reg[1]
 			var latB = reg[3]
@@ -299,7 +301,7 @@ func computeGeometricError(node *octree.OctNode) float64 {
 	parent := node.Parent
 	for parent != nil {
 		for _, e := range parent.Items {
-			if node.BoundingBox.CanContain(e) {
+			if canBoundingBoxContainElement(e, node.BoundingBox) {
 				totalRenderedPoints++
 			}
 		}
@@ -309,5 +311,11 @@ func computeGeometricError(node *octree.OctNode) float64 {
 	densityWIthOnlyThisTile := math.Pow(volume/float64(totalRenderedPoints), 0.333)
 
 	return densityWIthOnlyThisTile - densityWithAllPoints
+}
 
+// Checks if the bounding box contains the given element
+func canBoundingBoxContainElement(e *data.Point, bbox *geometry.BoundingBox) bool {
+	return (e.X >= bbox.Xmin && e.X <= bbox.Xmax) &&
+		(e.Y >= bbox.Ymin && e.Y <= bbox.Ymax) &&
+		(e.Z >= bbox.Zmin && e.Z <= bbox.Zmax)
 }

@@ -3,6 +3,9 @@ package octree
 import "C"
 import (
 	"fmt"
+	"github.com/mfbonfigli/gocesiumtiler/structs/data"
+	"github.com/mfbonfigli/gocesiumtiler/structs/geometry"
+	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -12,20 +15,20 @@ import (
 // up to eight children OctNodes
 type OctNode struct {
 	Parent              *OctNode
-	BoundingBox         *BoundingBox
+	BoundingBox         *geometry.BoundingBox
 	Children            [8]*OctNode
-	Items               []*OctElement
+	Items               []*data.Point
 	Depth               uint8
 	GlobalChildrenCount int64
 	LocalChildrenCount  int32
-	Opts                *TilerOptions
+	Opts                *tiler.TilerOptions
 	IsLeaf              bool
 	Initialized         bool
 	sync.RWMutex
 }
 
 // Instantiates a new OctNode
-func NewOctNode(boundingBox *BoundingBox, opts *TilerOptions, depth uint8, parent *OctNode) *OctNode {
+func NewOctNode(boundingBox *geometry.BoundingBox, opts *tiler.TilerOptions, depth uint8, parent *OctNode) *OctNode {
 	octNode := OctNode{
 		Parent:              parent,
 		BoundingBox:         boundingBox,
@@ -40,13 +43,13 @@ func NewOctNode(boundingBox *BoundingBox, opts *TilerOptions, depth uint8, paren
 	return &octNode
 }
 
-// Adds an OctElement to the OctNode eventually propagating it to the OctNode relevant children
-func (octNode *OctNode) AddOctElement(element *OctElement) {
+// Adds a Point to the OctNode eventually propagating it to the OctNode relevant children
+func (octNode *OctNode) AddDataPoint(element *data.Point) {
 	if atomic.LoadInt32(&octNode.LocalChildrenCount) == 0 {
 		octNode.Lock()
 		for i := uint8(0); i < 8; i++ {
 			if octNode.Children[i] == nil {
-				octNode.Children[i] = NewOctNode(octNode.BoundingBox.getOctantBoundingBox(&i), octNode.Opts, octNode.Depth+1, octNode)
+				octNode.Children[i] = NewOctNode(getOctantBoundingBox(&i, octNode.BoundingBox), octNode.Opts, octNode.Depth+1, octNode)
 			}
 		}
 		octNode.Initialized = true
@@ -58,7 +61,7 @@ func (octNode *OctNode) AddOctElement(element *OctElement) {
 		atomic.AddInt32(&octNode.LocalChildrenCount, 1)
 		octNode.Unlock()
 	} else {
-		octNode.Children[octNode.BoundingBox.getOctantFromElement(element)].AddOctElement(element)
+		octNode.Children[getOctantFromElement(element, octNode.BoundingBox)].AddDataPoint(element)
 		if octNode.IsLeaf {
 			octNode.Lock()
 			octNode.IsLeaf = false
@@ -76,4 +79,27 @@ func (octNode *OctNode) PrintStructure() {
 			e.PrintStructure()
 		}
 	}
+}
+
+
+
+
+// Returns the index of the octant that contains the given Point within this BoundingBox
+func getOctantFromElement(element *data.Point, bbox *geometry.BoundingBox) uint8 {
+	var result uint8 = 0
+	if float64(element.X) > bbox.Xmid {
+		result += 1
+	}
+	if float64(element.Y) > bbox.Ymid {
+		result += 2
+	}
+	if float64(element.Z) > bbox.Zmid {
+		result += 4
+	}
+	return result
+}
+
+// Returns a bounding box from the given box and the given octant index
+func getOctantBoundingBox(octant *uint8, bbox *geometry.BoundingBox) *geometry.BoundingBox {
+	return geometry.NewBoundingBoxFromParent(bbox, octant)
 }

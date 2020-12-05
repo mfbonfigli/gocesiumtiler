@@ -1,4 +1,4 @@
-package structs
+package geometry
 
 type Coordinate struct {
 	X *float64

@@ -4,11 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mfbonfigli/gocesiumtiler/converters"
+	"github.com/mfbonfigli/gocesiumtiler/converters/geoid_elevation_corrector"
+	"github.com/mfbonfigli/gocesiumtiler/converters/offset_elevation_corrector"
 	"github.com/mfbonfigli/gocesiumtiler/io"
-	lidario "github.com/mfbonfigli/gocesiumtiler/lasread"
+	"github.com/mfbonfigli/gocesiumtiler/lasread"
 	"github.com/mfbonfigli/gocesiumtiler/structs/octree"
+	"github.com/mfbonfigli/gocesiumtiler/structs/point_loader"
+	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
 	"log"
-	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,20 +21,109 @@ import (
 )
 
 // Starts the tiling process
-func RunTiler(opts *octree.TilerOptions) error {
-
+func RunTiler(opts *tiler.TilerOptions) error {
 	LogOutput("Preparing list of files to process...")
 
 	// Prepare list of files to process
-	lasFiles := make([]string, 0)
+	lasFiles := getLasFilesToProcess(opts)
 
+	// Define elevation (Z) correction algorithm to apply
+	elevationCorrectionAlg := getElevationCorrectionAlgorithm(opts)
+
+	// Define point_loader strategy
+	var loader = getLoaderFromLoaderStrategy(opts.Strategy)
+
+	// load las points in octree buffer
+	for i, filePath := range lasFiles {
+		LogOutput("Processing file " + strconv.Itoa(i+1) + "/" + strconv.Itoa(len(lasFiles)))
+		processLasFile(filePath, opts, loader, elevationCorrectionAlg)
+	}
+
+	return nil
+}
+
+func processLasFile(filePath string, opts *tiler.TilerOptions, loader point_loader.Loader, elevationCorrectionAlg converters.ElevationCorrector) {
+	// Create empty octree
+	OctTree := octree.NewOctTree(opts)
+
+	readLasData(filePath, elevationCorrectionAlg, opts, loader)
+	prepareDataStructure(OctTree, loader)
+	exportToCesiumTileset(OctTree, opts, getFilenameWithoutExtension(filePath))
+
+	LogOutput("> done processing", filepath.Base(filePath))
+	opts.CoordinateConverter.Cleanup()
+}
+
+func readLasData(filePath string, elevationCorrectionAlg converters.ElevationCorrector, opts *tiler.TilerOptions, loader point_loader.Loader) {
+	// Reading files
+	LogOutput("> reading data from las file...", filepath.Base(filePath))
+	err := readLas(filePath, elevationCorrectionAlg, opts, loader)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func prepareDataStructure(octree *octree.OctTree, loader point_loader.Loader) {
+	// Build tree hierarchical structure
+	LogOutput("> building data structure...")
+	err := octree.Build(loader)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func exportToCesiumTileset(octree *octree.OctTree, opts *tiler.TilerOptions, fileName string) {
+	LogOutput("> exporting data...")
+	err := exportOctreeAsTileset(opts, octree, fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getFilenameWithoutExtension(filePath string) string {
+	nameWext := filepath.Base(filePath)
+	extension := filepath.Ext(nameWext)
+	return nameWext[0 : len(nameWext)-len(extension)]
+}
+
+func getLoaderFromLoaderStrategy(strategy tiler.LoaderStrategy) point_loader.Loader {
+	var loader point_loader.Loader
+
+	loader = point_loader.NewRandomLoader()
+	if strategy == tiler.BoxedRandom {
+		loader = point_loader.NewRandomBoxLoader()
+	}
+
+	return loader
+}
+
+func getElevationCorrectionAlgorithm(opts *tiler.TilerOptions) converters.ElevationCorrector {
+	if !opts.EnableGeoidZCorrection {
+		return offset_elevation_corrector.NewOffsetElevationCorrector(opts.ZOffset)
+	} else {
+		return geoid_elevation_corrector.NewGeoidElevationCorrector(opts.ZOffset, opts.ElevationConverter)
+	}
+}
+
+func getLasFilesToProcess(opts *tiler.TilerOptions) []string {
 	// If folder processing is not enabled then las file is given by -input flag, otherwise look for las in -input folder
 	// eventually excluding nested folders if Recursive flag is disabled
 	if !opts.FolderProcessing {
-		lasFiles = append(lasFiles, opts.Input)
-	} else {
-		baseInfo, _ := os.Stat(opts.Input)
-		err := filepath.Walk(opts.Input, func(path string, info os.FileInfo, err error) error {
+		return []string{opts.Input}
+	}
+
+	return getLasFilesFromInputFolder(opts)
+}
+
+func getLasFilesFromInputFolder(opts *tiler.TilerOptions) []string {
+	var lasFiles = make([]string, 0)
+
+	baseInfo, _ := os.Stat(opts.Input)
+	err := filepath.Walk(
+		opts.Input,
+		func(path string, info os.FileInfo, err error) error {
 			if info.IsDir() && !opts.Recursive && !os.SameFile(info, baseInfo) {
 				return filepath.SkipDir
 			} else {
@@ -40,89 +132,22 @@ func RunTiler(opts *octree.TilerOptions) error {
 				}
 			}
 			return nil
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
+		},
+	)
 
-	//fileName := "C:\\Users\\bonfi\\Desktop\\las\\output\\2019-JAN-07_Montesilvano3 Track_B_2019-02-25_11h30_01_331.las"
-	// fileName := opts.Input
-
-	// Define elevation (Z) correction algorithm to apply
-	zCorrectionAlg := func(lat, lon, z float64) float64 {
-		return z + opts.ZOffset
-	}
-	if opts.EnableGeoidZCorrection {
-		// TODO: Configurable cell size
-		eFixer := converters.NewElevationFixer(4326, 360/6371000*math.Pi*2)
-		zCorrectionAlg = func(lat, lon, z float64) float64 {
-			zfix, err := eFixer.GetCorrectedElevation(lat, lon, z)
-			if err != nil {
-				log.Fatal(err)
-			}
-			return zfix + opts.ZOffset
-		}
-	}
-
-	// Define loader strategy
-	var loader octree.Loader
-	loader = octree.NewRandomLoader()
-	if opts.Strategy == octree.BoxedRandom {
-		loader = octree.NewRandomBoxLoader()
-	}
-
-	// load las points in octree buffer
-	for i, fileName := range lasFiles {
-		// Create empty octree
-		OctTree := octree.NewOctTree(opts)
-
-		// Reading files
-		LogOutput("Processing file " + strconv.Itoa(i+1) + "/" + strconv.Itoa(len(lasFiles)))
-		LogOutput("> reading data from las file...", filepath.Base(fileName))
-
-		err := loadLasInOctree(fileName, OctTree, zCorrectionAlg, opts, loader)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Build tree hierarchical structure
-		LogOutput("> building data structure...")
-		//err = OctTree.BuildTree()
-		err = OctTree.Build(loader)
-		if err != nil {
-			return err
-		}
-
-		LogOutput("> exporting data...")
-		nameWext := filepath.Base(fileName)
-		extension := filepath.Ext(nameWext)
-		name := nameWext[0 : len(nameWext)-len(extension)]
-		err = exportOctreeAsTileset(opts, OctTree, name)
-		if err != nil {
-			return err
-		}
-		LogOutput("> done processing", filepath.Base(fileName))
-		converters.DeallocateProjections()
-	}
-	return nil
-}
-
-// Extracts all the points from the given LAS file and loads them in the given octree
-func loadLasInOctree(fileName string, OctTree *octree.OctTree, zCorrectionAlg func(lat, lon, z float64) float64, opts *octree.TilerOptions, loader octree.Loader) error {
-	// Read las file and obtaining list of OctElements
-	err := readLas(fileName, zCorrectionAlg, opts, loader)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
-	return nil
+
+	return lasFiles
 }
 
-// Reads the given las file and preloads data in a list of OctElements
-func readLas(file string, zCorrection func(lat, lon, z float64) float64, opts *octree.TilerOptions, loader octree.Loader) error {
+// Reads the given las file and preloads data in a list of Point
+func readLas(file string, zCorrection converters.ElevationCorrector, opts *tiler.TilerOptions, loader point_loader.Loader) error {
 	var lf *lidario.LasFile
 	var err error
-	lf, err = lidario.NewLasFileForTiler(file, zCorrection, opts.Srid, loader)
+	var lasFileLoader = lidario.NewLasFileLoader(opts.CoordinateConverter, opts.ElevationConverter, loader)
+	lf, err = lasFileLoader.LoadLasFile(file, zCorrection, opts.Srid)
 	if err != nil {
 		return err
 	}
@@ -131,9 +156,9 @@ func readLas(file string, zCorrection func(lat, lon, z float64) float64, opts *o
 	return nil
 }
 
-// Exports the point cloud represented by the given built octree into 3D tiles data structure according to the options
+// Exports the data cloud represented by the given built octree into 3D tiles data structure according to the options
 // specified in the TilerOptions instance
-func exportOctreeAsTileset(opts *octree.TilerOptions, octree *octree.OctTree, subfolder string) error {
+func exportOctreeAsTileset(opts *tiler.TilerOptions, octree *octree.OctTree, subfolder string) error {
 	// if octree is not built, exit
 	if !octree.Built {
 		return errors.New("octree not built, data structure not initialized")
@@ -143,33 +168,32 @@ func exportOctreeAsTileset(opts *octree.TilerOptions, octree *octree.OctTree, su
 	numConsumers := runtime.NumCPU()
 
 	// init channel where to submit work with a buffer 5 times greater than the number of consumer
-	workchan := make(chan *io.WorkUnit, numConsumers*5)
+	workChannel := make(chan *io.WorkUnit, numConsumers*5)
 
 	// init channel where consumers can eventually submit errors that prevented them to finish the job
-	errchan := make(chan error)
+	errorChannel := make(chan error)
 
-	var wg sync.WaitGroup
+	var waitGroup sync.WaitGroup
 
-	// init producer
-	wg.Add(1)
+	// add producer to waitgroup and launch producer goroutine
+	waitGroup.Add(1)
+	go io.Produce(opts.Output, &octree.RootNode, opts, workChannel, &waitGroup, subfolder)
 
-	go io.Produce(opts.Output, &octree.RootNode, opts, workchan, &wg, subfolder)
-
-	// init consumers
+	// add consumers to waitgroup and launch them
 	for i := 0; i < numConsumers; i++ {
-		wg.Add(1)
-		go io.Consume(workchan, errchan, &wg)
+		waitGroup.Add(1)
+		go io.Consume(workChannel, errorChannel, &waitGroup, opts.CoordinateConverter)
 	}
 
 	// wait for producers and consumers to finish
-	wg.Wait()
+	waitGroup.Wait()
 
 	// close error chan
-	close(errchan)
+	close(errorChannel)
 
 	// find if there are errors in the error channel buffer
 	withErrors := false
-	for err := range errchan {
+	for err := range errorChannel {
 		fmt.Println(err)
 		withErrors = true
 	}

@@ -24,7 +24,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mfbonfigli/gocesiumtiler/structs/octree"
+	"github.com/mfbonfigli/gocesiumtiler/converters/gh_ellipsoid_to_geoid_z_converter"
+	"github.com/mfbonfigli/gocesiumtiler/converters/proj4_coordinate_converter"
+	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
 	"log"
 	"os"
 	"time"
@@ -57,7 +59,7 @@ func main() {
 		fmt.Println("* Cesium Point Cloud Tiler *")
 		fmt.Println("* Copyright 2019 Massimo Federico Bonfigli *")
 		fmt.Println("* ")
-		fmt.Println("* a command line tool for generating cesium 3D tiles of point clouds from LAS files")
+		fmt.Println("* a command line tool for generating cesium 3D tiles of data clouds from LAS files")
 		fmt.Println("")
 		fmt.Println("")
 		fmt.Println("Command line flags: ")
@@ -71,12 +73,17 @@ func main() {
 	timestampEnabled = *logTimestamp
 
 	// eventually set HQ strategy
-	strategy := octree.FullyRandom
+	strategy := tiler.FullyRandom
 	if *hq {
-		strategy = octree.BoxedRandom
+		strategy = tiler.BoxedRandom
 	}
+
+	// default converter services
+	var coordinateConverterService = proj4_coordinate_converter.NewProj4CoordinateConverter()
+	var elevationConverterService = gh_ellipsoid_to_geoid_z_converter.NewGHElevationConverter(coordinateConverterService)
+
 	// Put args inside a TilerOptions struct
-	opts := octree.TilerOptions{
+	opts := tiler.TilerOptions{
 		Input:                  *input,
 		Output:                 *output,
 		Srid:                   *srid,
@@ -87,6 +94,8 @@ func main() {
 		Recursive:              *recursiveFolderProcessing,
 		Silent:                 *silent,
 		Strategy:               strategy,
+		CoordinateConverter:    coordinateConverterService,
+		ElevationConverter:     elevationConverterService,
 	}
 
 	// Validate TilerOptions
@@ -106,7 +115,7 @@ func main() {
 
 // Validates the input options provided to the command line tool checking
 // that input and output folders/files exist
-func validateOptions(opts *octree.TilerOptions) (string, bool) {
+func validateOptions(opts *tiler.TilerOptions) (string, bool) {
 	if _, err := os.Stat(opts.Input); os.IsNotExist(err) {
 		return "Input file/folder not found", false
 	}
