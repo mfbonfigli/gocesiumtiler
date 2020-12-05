@@ -25,10 +25,10 @@ func NewProj4CoordinateConverter() converters.CoordinateConverter {
 	exPath := utils.GetExecutablePath()
 
 	// Set path for retrieving projection static data
-	proj.SetFinder([]string{path.Join(exPath, "static\\share")})
+	proj.SetFinder([]string{path.Join(exPath, "static", "share")})
 
 	// Initialization of EPSG Proj4 database
-	file := path.Join(exPath, "static\\epsg_projections.txt")
+	file := path.Join(exPath, "static", "epsg_projections.txt")
 
 	return &proj4CoordinateConverter{
 		EpsgDatabase: *loadEPSGProjectionDatabase(file),
