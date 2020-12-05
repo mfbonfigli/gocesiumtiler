@@ -32,7 +32,7 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 Along with the source code a prebuilt binary for Windows x64 is provided for each release of the tool in the github page.
 Binaries for other systems at the moment are not provided.
 
-## Installing
+## Environment setup and compiling from sources
 To get started with development just clone the repository. 
 
 When launching a build with `go build` go modules will retrieve the required dependencies. 
