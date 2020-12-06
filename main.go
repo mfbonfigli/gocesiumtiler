@@ -41,7 +41,7 @@ const logo = `
 | (_| | (_) | (_|  __/\__ \ | |_| | | | | | | |_| | |  __/ |   
  \__, |\___/ \___\___||___/_|\__,_|_| |_| |_|\__|_|_|\___|_|   
   __| | A Cesium Point Cloud tile generator written in golang
- |____, Copyright 2019 - Massimo Federico Bonfigli    
+ |___/  Copyright 2019 - Massimo Federico Bonfigli    
 `
 
 

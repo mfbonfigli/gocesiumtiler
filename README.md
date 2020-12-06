@@ -1,4 +1,17 @@
 # Go Cesium Point Cloud Tiler
+
+```
+                                              _   _ _
+  __ _  ___   ___ ___  ___(_)_   _ _ __ ___ | |_(_) | ___ _ __
+ / _  |/ _ \ / __/ _ \/ __| | | | | '_   _ \| __| | |/ _ \ '__|
+| (_| | (_) | (_|  __/\__ \ | |_| | | | | | | |_| | |  __/ |
+ \__, |\___/ \___\___||___/_|\__,_|_| |_| |_|\__|_|_|\___|_|
+  __| | A Cesium Point Cloud tile generator written in golang
+ |___/ 
+```
+
+
+
 Go Cesium Point Cloud Tiler is a tool to convert point cloud stored as LAS files to Cesium.js 3D tiles ready to be
 streamed, automatically generating the appropriate level of details and including additional information for each point 
 such as color, laser intensity and classification.   
