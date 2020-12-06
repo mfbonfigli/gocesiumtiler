@@ -7,9 +7,9 @@ import (
 	"sync"
 )
 
-// Stores Points and returns them shuffled according to the following strategy. Points are grouped in buckets of
-// 1e-6 deg of latitude and longitude. Boxes are randomly sorted and the next data is selected at random from the first
-// box. Next data is taken at random from the following box. When boxes have all been visited the selection will begin
+// Stores Points and returns them shuffled according to the following strategy. Points are grouped in buckets (boxes).
+// Boxes are randomly sorted and the next data is selected at random from the first box.
+// Next data is taken at random from the following box. When boxes have all been visited the selection will begin
 // again from the first one. If one box becomes empty is removed and replaced with the last one in the set.
 type RandomBoxLoader struct {
 	sync.Mutex
@@ -32,44 +32,6 @@ func NewRandomBoxLoader() *RandomBoxLoader {
 		maxY:            -1 * math.MaxFloat64,
 		maxZ:            -1 * math.MaxFloat64,
 	}
-}
-
-// Unique spatial key structure for grouping points
-type geoKey struct {
-	X int
-	Y int
-	Z int
-}
-
-// Mutexed list of pointers to Points for concurrent usage
-type safeElementList struct {
-	sync.Mutex
-	Elements []*data.Point
-}
-
-// Instances a new safeElementList
-func newSafeElementList() *safeElementList {
-	return &safeElementList{
-		Elements: make([]*data.Point, 0),
-	}
-}
-
-// Thread safe removal and restitution of the first element of the safeElementList. Returns also a boolean flag that
-// tells the caller if the list is now empty after this retrieval
-func (sel *safeElementList) removeAndGetFirst() (*data.Point, bool) {
-	var el *data.Point
-	var stillItems = false
-	sel.Lock()
-	num := len(sel.Elements)
-	if num > 0 {
-		el = sel.Elements[0]
-		sel.Elements = sel.Elements[1:]
-		if num > 1 {
-			stillItems = true
-		}
-	}
-	sel.Unlock()
-	return el, stillItems
 }
 
 func (eb *RandomBoxLoader) AddElement(e *data.Point) {
@@ -117,16 +79,6 @@ func (eb *RandomBoxLoader) Initialize() {
 	}
 	rand.Shuffle(len(eb.Keys), func(i, j int) { eb.Keys[i], eb.Keys[j] = eb.Keys[j], eb.Keys[i] })
 	eb.currentKeyIndex = 0
-}
-
-// Computes the geokey associated to the given Point
-func computeGeoKey(e *data.Point) geoKey {
-	// 6th decimal for lat lng, 1st decimal for meters
-	return geoKey{
-		X: int(math.Floor(e.X / 10e-6)),
-		Y: int(math.Floor(e.Y / 1 * 10e-6)),
-		Z: int(math.Floor(e.Z / 10e-1)),
-	}
 }
 
 func (eb *RandomBoxLoader) GetBounds() []float64 {
