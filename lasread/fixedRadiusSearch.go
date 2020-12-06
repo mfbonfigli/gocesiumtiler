@@ -184,7 +184,7 @@ func (frs *fixedRadiusSearch) search3D(x, y, z float64) *FRSResultList {
 // FRSResultNode list node
 type FRSResultNode struct {
 	FixedRadiusSearchResult // Embedded struct
-	next, prev              *FRSResultNode
+	next, prev *FRSResultNode
 }
 
 // FRSResultList list return from a fixed-radius search

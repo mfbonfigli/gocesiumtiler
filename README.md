@@ -1,4 +1,17 @@
 # Go Cesium Point Cloud Tiler
+
+```
+                                              _   _ _
+  __ _  ___   ___ ___  ___(_)_   _ _ __ ___ | |_(_) | ___ _ __
+ / _  |/ _ \ / __/ _ \/ __| | | | | '_   _ \| __| | |/ _ \ '__|
+| (_| | (_) | (_|  __/\__ \ | |_| | | | | | | |_| | |  __/ |
+ \__, |\___/ \___\___||___/_|\__,_|_| |_| |_|\__|_|_|\___|_|
+  __| | A Cesium Point Cloud tile generator written in golang
+ |___/ 
+```
+
+
+
 Go Cesium Point Cloud Tiler is a tool to convert point cloud stored as LAS files to Cesium.js 3D tiles ready to be
 streamed, automatically generating the appropriate level of details and including additional information for each point 
 such as color, laser intensity and classification.   
@@ -19,6 +32,9 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 
 
 ## Changelog
+##### Version 1.0.3 
+* Added shorthand versions of input flags and a new intro logo. Also a major code refactoring has happened behind the scenes. 
+
 ##### Version 1.0.2 
 * Fixed bug preventing tileset.json from being generated if only one pnts is created
 
@@ -32,16 +48,15 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 Along with the source code a prebuilt binary for Windows x64 is provided for each release of the tool in the github page.
 Binaries for other systems at the moment are not provided.
 
-## Installing
-To get started with development just run
+## Environment setup and compiling from sources
+To get started with development just clone the repository. 
 
-```
-go get github.com/mfbonfigli/gocesiumtiler
-```
+When launching a build with `go build` go modules will retrieve the required dependencies. 
 
 As the project and its dependencies make use of C code, under windows you should also have GCC compiler installed and available
 in the PATH environment variable. More information on cgo compiler are available [here](https://github.com/golang/go/wiki/cgo).
 
+Under linux you will have to have `gcc` installed. Also make sure go is configured to pass the correct flags to gcc. In particular if you encounter compilation errors similar to `undefined reference to 'sqrt'` it means that it is not linking the standard math libraries. A way to fix this is to add `-lm` to the `CGO_LDFLAGS`environment variable, for example by running `export CGO_LDFLAGS="-g -O2 -lm"`.
 ## Usage
 
 <b>The code expects to find a copy of the [static](static) folder in the same path where the compiled executable runs.</b>
@@ -59,18 +74,31 @@ gocesiumtiler -help
 ### Flags
 
 ```
--input=<path>           input las file or folder containing las files. Required.
--output=<path>          output folder where to write cesium 3d tiles output. Required.
--srid=<epsg-code-no>    epsg code number of input coordinates (e.g. 4326 for EPSG:4326) [default: 4326]
--zoffset=<m>            vertical offset to apply to points, in meters [default: 0]
--maxpts=<n>             maximum number of points per each tile [default: 50000]
--geoid                  enables the geoid to ellipsoid elevation conversion
--folder                 enables the processing of all files in input folder
--recursive              if folder processing is enabled, recursively processes all LAS files found in subfolders
--silent                 suppresses all non error messages
--timestamp              adds a timestamp to console messages
--hq                     enables the use of a higher quality (but slightly slower) point sampling algorithm.
--help                   prints the help
+  -e <int>          EPSG srid code of input points. (shorthand for srid) (default 4326)
+  -f                Enables processing of all las files from input folder. Input must be a folder if specified (shorthand for folder)
+  -folder           Enables processing of all las files from input folder. Input must be a folder if specified
+  -g                Enables Geoid to Ellipsoid elevation correction. Use this flag if your input LAS files have Z coordinates specified relative to the Earth geoid rather than to the standard ellipsoid. (shorthand for geoid)
+  -geoid            Enables Geoid to Ellipsoid elevation correction. Use this flag if your input LAS files have Z coordinates specified relative to the Earth geoid rather than to the standard ellipsoid.
+  -h                Displays this help. (shorthand for help)
+  -help             Displays this help.
+  -hq               Enables a higher quality random pick algorithm.
+  -i <path>         Specifies the input las file/folder. (shorthand for input)
+  -input <path>     Specifies the input las file/folder.
+  -m <int>          Max number of points per tile.  (shorthand for maxpts) (default 50000)
+  -maxpts <int>     Max number of points per tile.  (default 50000)
+  -o <path>         Specifies the output folder where to write the tileset data. (shorthand for output)
+  -output <path>    Specifies the output folder where to write the tileset data.
+  -r                Enables recursive lookup for all .las files inside the subfolders (shorthand for recursive)
+  -recursive        Enables recursive lookup for all .las files inside the subfolders
+  -s                Use to suppress all the non-error messages. (shorthand for silent)
+  -silent           Use to suppress all the non-error messages.
+  -srid <int>       EPSG srid code of input points. (default 4326)
+  -t                Adds timestamp to log messages. (shorthand for timestamp)
+  -timestamp        Adds timestamp to log messages.
+  -v                Displays the version of gocesiumtiler. (shorthand for version)
+  -version          Displays the version of gocesiumtiler.
+  -z <float>        Vertical offset to apply to points, in meters. (shorthand for zoffset)
+  -zoffset <float>  Vertical offset to apply to points, in meters.
 ```
 
 ### Usage examples:
@@ -81,6 +109,10 @@ in EPSG:32633, convert elevation from above the geoid to above the ellipsoid and
 ```
 gocesiumtiler -input=C:\las -output=C:\out -srid=32633 -geoid -folder -recursive -hq
 ```
+or, using the shorthand notation:
+```
+gocesiumtiler -i C:\las -o C:\out -e 32633 -g -f -r -hq
+```
 
 Recursively convert all LAS files in `C:\las\file.las`, write output tileset in folder `C:\out`, assume input coordinates
 expressed in EPSG:4326, apply an offset of 10 meters to elevation of points and allow to store up to 100000 points per tile:
@@ -88,11 +120,17 @@ expressed in EPSG:4326, apply an offset of 10 meters to elevation of points and 
 ```
 gocesiumtiler -input=C:\las\file.las -output=C:\out -zoffset=10 -maxpts=100000
 ```
+or, using the shorthand notation:
+
+```
+gocesiumtiler -i C:\las\file.las -o C:\out -z 10 -m 100000
+```
 
 ## Future work and support
 
 Further work needs to be done, such as: 
-
+- Completing the unit test coverage. The work on this has started but it is at the early stages. It is priority no. 1 before adding new features.
+- Adding a grid sampling algorithm. This would significantly improve the quality output as opposed to a random sampling algorithm, probably at the expense of processing speed.
 - Integration with the [Draco](https://github.com/google/draco) compression library
 - Upgrading of the Proj4 library to versions newer than 4.9.2
 - Optimizations to reduce the memory footprint so to process bigger LAS files

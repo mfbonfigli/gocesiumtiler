@@ -1,10 +1,12 @@
-package converters
+package gh_ellipsoid_to_geoid_z_converter
 
 import (
 	"bufio"
 	"log"
 	"math"
+	"github.com/mfbonfigli/gocesiumtiler/utils"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -30,11 +32,11 @@ type egm struct {
 }
 
 // Inits a new earth gravitational model according to the default parameters
-func NewDefaultEarthGravitationalModel() *egm {
-	return NewEarthGraviationalModel(defaultOrder, true)
+func newDefaultEarthGravitationalModel() *egm {
+	return newEarthGraviationalModel(defaultOrder, true)
 }
 
-func NewEarthGraviationalModel(nmax int, wgs84 bool) *egm {
+func newEarthGraviationalModel(nmax int, wgs84 bool) *egm {
 	model := egm{
 		nmax:  nmax,
 		wgs84: wgs84,
@@ -61,6 +63,15 @@ func NewEarthGraviationalModel(nmax int, wgs84 bool) *egm {
 	model.cnmGeopCoef = make([]float64, geopCoefLength)
 	model.snmGeopCoef = make([]float64, geopCoefLength)
 	model.as = make([]float64, nmax+1)
+
+	exPath := utils.GetExecutablePath()
+
+	// Loading Earth Gravitational Model data
+	err := model.load(path.Join(exPath, "static", "egm180.nor"))
+	if err != nil {
+		log.Fatal("error loading gravitational model data", err)
+	}
+
 	return &model
 }
 
@@ -155,7 +166,7 @@ func (egm *egm) initialize() {
 	}
 }
 
-func (egm *egm) HeightOffset(lon, lat, height float64) float64 {
+func (egm *egm) heightOffset(lon, lat, height float64) float64 {
 	cr := make([]float64, egm.nmax+1)
 	sr := make([]float64, egm.nmax+1)
 	s11 := make([]float64, egm.nmax+3)

@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// NoData value used when indexing point outside of allowable range.
+// NoData value used when indexing data outside of allowable range.
 var NoData = math.Inf(-1)
 
 // LasFile is a structure for manipulating LAS files.
@@ -57,7 +57,7 @@ func NewLasFile(fileName, fileMode string) (*LasFile, error) {
 			return &las, err
 		}
 
-		// initialize the point, gps, and rgb data slices and set the capacity
+		// initialize the data, gps, and rgb data slices and set the capacity
 		initCapacity := 1000000
 		las.pointData = make([]PointRecord0, 0, initCapacity)
 		if las.Header.PointFormatID == 1 || las.Header.PointFormatID == 3 {
@@ -92,7 +92,7 @@ func InitializeUsingFile(fileName string, other *LasFile) (*LasFile, error) {
 		las.AddVLR(vlr)
 	}
 
-	// initialize the point, gps, and rgb data slices and set the capacity to that of the other file
+	// initialize the data, gps, and rgb data slices and set the capacity to that of the other file
 	las.pointData = make([]PointRecord0, 0, other.Header.NumberPoints)
 	if other.Header.PointFormatID == 1 || other.Header.PointFormatID == 3 {
 		las.gpsData = make([]float64, 0, other.Header.NumberPoints)
@@ -159,7 +159,7 @@ func (las *LasFile) AddVLR(vlr VLR) error {
 	return nil
 }
 
-// AddLasPoint adds a point record to a Las file created in 'w' (write) mode. The method is thread-safe.
+// AddLasPoint adds a data record to a Las file created in 'w' (write) mode. The method is thread-safe.
 func (las *LasFile) AddLasPoint(p LasPointer) error {
 	if las.fileMode == "r" || las.fileMode == "rh" {
 		return fmt.Errorf("file has been opened in %v mode; AddHeader can only be used in 'w' mode", las.fileMode)
@@ -222,7 +222,7 @@ func (las *LasFile) AddLasPoint(p LasPointer) error {
 	return nil
 }
 
-// AddLasPoints adds a slice of point record to a Las file created in 'w' (write) mode. The method is thread-safe.
+// AddLasPoints adds a slice of data record to a Las file created in 'w' (write) mode. The method is thread-safe.
 func (las *LasFile) AddLasPoints(points []LasPointer) error {
 	if las.fileMode == "r" || las.fileMode == "rh" {
 		return fmt.Errorf("file has been opened in %v mode; AddHeader can only be used in 'w' mode", las.fileMode)
@@ -310,7 +310,7 @@ func (las *LasFile) Close() error {
 	return las.f.Close()
 }
 
-// GetXYZ returns the x, y, z data for a specified point
+// GetXYZ returns the x, y, z data for a specified data
 func (las *LasFile) GetXYZ(index int) (float64, float64, float64, error) {
 	if index < 0 || index >= las.Header.NumberPoints {
 		return NoData, NoData, NoData, errors.New("Index outside of allowable range")
@@ -318,7 +318,7 @@ func (las *LasFile) GetXYZ(index int) (float64, float64, float64, error) {
 	return las.pointData[index].X, las.pointData[index].Y, las.pointData[index].Z, nil
 }
 
-// LasPoint returns a LAS point.
+// LasPoint returns a LAS data.
 func (las *LasFile) LasPoint(index int) (LasPointer, error) {
 	if index < 0 || index >= las.Header.NumberPoints {
 		return &PointRecord0{}, errors.New("Index outside of allowable range")
@@ -343,7 +343,7 @@ func (las *LasFile) LasPoint(index int) (LasPointer, error) {
 		return &PointRecord3{PointRecord0: &las.pointData[index], GPSTime: las.gpsData[index], RGB: &las.rgbData[index]}, nil
 	default:
 		// las.RUnlock()
-		return &PointRecord0{}, errors.New("Unrecognized point format")
+		return &PointRecord0{}, errors.New("Unrecognized data format")
 	}
 }
 
@@ -558,7 +558,7 @@ func (las *LasFile) readPoints() error {
 	}
 
 	// Intensity and userdata are both optional. Figure out if they need to be read.
-	// The only way to do this is to compare the point record length by point format
+	// The only way to do this is to compare the data record length by data format
 	recLengths := [4][4]int{{20, 18, 19, 17}, {28, 26, 27, 25}, {26, 24, 25, 23}, {34, 32, 33, 31}}
 
 	if las.Header.PointRecordLength == recLengths[las.Header.PointFormatID][0] {
@@ -757,7 +757,7 @@ func (las *LasFile) write() error {
 	w.WriteByte(las.Header.PointFormatID)
 
 	// Intensity and userdata are both optional. Figure out if they need to be read.
-	// The only way to do this is to compare the point record length by point format
+	// The only way to do this is to compare the data record length by data format
 	recLengths := [][]int{{20, 18, 19, 17}, {28, 26, 27, 25}, {26, 24, 25, 23}, {34, 32, 33, 31}}
 
 	if las.usePointIntensity && las.usePointUserdata {
@@ -1576,7 +1576,7 @@ func (gef GlobalEncodingField) String() string {
 }
 
 // GpsTimeType is a uint describing the type of time format used in
-// in the file to store point GPS time.
+// in the file to store data GPS time.
 type GpsTimeType uint
 
 func (gtt GpsTimeType) String() string {
@@ -1691,7 +1691,7 @@ func (vlr VLR) String() string {
 	return buffer.String()
 }
 
-// LasPointer interface for all point record types
+// LasPointer interface for all data record types
 type LasPointer interface {
 	Format() uint8
 	PointData() *PointRecord0
@@ -1702,7 +1702,7 @@ type LasPointer interface {
 	RgbData() *RgbData
 }
 
-// PointRecord0 is a LAS point record type 0.
+// PointRecord0 is a LAS data record type 0.
 type PointRecord0 struct {
 	X             float64
 	Y             float64
@@ -1715,32 +1715,32 @@ type PointRecord0 struct {
 	PointSourceID uint16
 }
 
-// Format returns the point format number.
+// Format returns the data format number.
 func (p *PointRecord0) Format() uint8 {
 	return 0
 }
 
-// PointData returns the point data (PointRecord0) for the LAS point.
+// PointData returns the data data (PointRecord0) for the LAS data.
 func (p *PointRecord0) PointData() *PointRecord0 {
 	return p
 }
 
-// GpsTimeData returns the GPS time data for the LAS point.
+// GpsTimeData returns the GPS time data for the LAS data.
 func (p *PointRecord0) GpsTimeData() float64 {
 	return NoData
 }
 
-// RgbData returns the RGB colour data for the LAS point.
+// RgbData returns the RGB colour data for the LAS data.
 func (p *PointRecord0) RgbData() *RgbData {
 	return &RgbData{}
 }
 
-// IsLateReturn returns true if the point is a last return.
+// IsLateReturn returns true if the data is a last return.
 func (p *PointRecord0) IsLateReturn() bool {
 	return p.BitField.ReturnNumber() == p.BitField.NumberOfReturns()
 }
 
-// IsFirstReturn returns true if the point is a first return.
+// IsFirstReturn returns true if the data is a first return.
 func (p *PointRecord0) IsFirstReturn() bool {
 	if p.BitField.ReturnNumber() == uint8(1) && p.BitField.NumberOfReturns() > uint8(1) {
 		return true
@@ -1748,7 +1748,7 @@ func (p *PointRecord0) IsFirstReturn() bool {
 	return false
 }
 
-// IsIntermediateReturn returns true if the point is an intermediate return.
+// IsIntermediateReturn returns true if the data is an intermediate return.
 func (p *PointRecord0) IsIntermediateReturn() bool {
 	rn := p.BitField.ReturnNumber()
 	if rn > uint8(1) && rn < p.BitField.NumberOfReturns() {
@@ -1757,76 +1757,76 @@ func (p *PointRecord0) IsIntermediateReturn() bool {
 	return false
 }
 
-// PointRecord1 is a LAS point record type 1
+// PointRecord1 is a LAS data record type 1
 type PointRecord1 struct {
 	*PointRecord0
 	GPSTime float64
 }
 
-// Format returns the point format number.
+// Format returns the data format number.
 func (p *PointRecord1) Format() uint8 {
 	return 1
 }
 
-// GpsTimeData returns the point data (PointRecord0) for the LAS point.
+// GpsTimeData returns the data data (PointRecord0) for the LAS data.
 func (p *PointRecord1) GpsTimeData() float64 {
 	return p.GPSTime
 }
 
-// RgbData returns the RGB colour data for the LAS point.
+// RgbData returns the RGB colour data for the LAS data.
 func (p *PointRecord1) RgbData() *RgbData {
 	return &RgbData{}
 }
 
-// PointRecord2 is a LAS point record type 2
+// PointRecord2 is a LAS data record type 2
 type PointRecord2 struct {
 	*PointRecord0
 	RGB *RgbData
 }
 
-// Format returns the point format number.
+// Format returns the data format number.
 func (p *PointRecord2) Format() uint8 {
 	return 2
 }
 
-// GpsTimeData returns the point data (PointRecord0) for the LAS point.
+// GpsTimeData returns the data data (PointRecord0) for the LAS data.
 func (p *PointRecord2) GpsTimeData() float64 {
 	return NoData
 }
 
-// RgbData returns the RGB colour data for the LAS point.
+// RgbData returns the RGB colour data for the LAS data.
 func (p *PointRecord2) RgbData() *RgbData {
 	return p.RGB
 }
 
-// PointRecord3 is a LAS point record type 3
+// PointRecord3 is a LAS data record type 3
 type PointRecord3 struct {
 	*PointRecord0
 	GPSTime float64
 	RGB     *RgbData
 }
 
-// Format returns the point format number.
+// Format returns the data format number.
 func (p *PointRecord3) Format() uint8 {
 	return 3
 }
 
-// GpsTimeData returns the point data (PointRecord0) for the LAS point.
+// GpsTimeData returns the data data (PointRecord0) for the LAS data.
 func (p *PointRecord3) GpsTimeData() float64 {
 	return p.GPSTime
 }
 
-// RgbData returns the RGB colour data for the LAS point.
+// RgbData returns the RGB colour data for the LAS data.
 func (p *PointRecord3) RgbData() *RgbData {
 	return p.RGB
 }
 
-// PointBitField is a point record bit field
+// PointBitField is a data record bit field
 type PointBitField struct {
 	Value byte
 }
 
-// ReturnNumber returns the return number of the point
+// ReturnNumber returns the return number of the data
 func (p *PointBitField) ReturnNumber() byte {
 	ret := (p.Value & byte(7))
 	if ret == 0 {
@@ -1835,7 +1835,7 @@ func (p *PointBitField) ReturnNumber() byte {
 	return ret
 }
 
-// NumberOfReturns returns the number of returns of the point
+// NumberOfReturns returns the number of returns of the data
 func (p *PointBitField) NumberOfReturns() byte {
 	ret := (p.Value & byte(56))
 	if ret == 0 {
@@ -1855,17 +1855,17 @@ func (p *PointBitField) EdgeOfFlightlineFlag() bool {
 	return (p.Value & byte(128)) == byte(128)
 }
 
-// ClassificationBitField is a point record classification bit field
+// ClassificationBitField is a data record classification bit field
 type ClassificationBitField struct {
 	Value byte
 }
 
-// Classification of LAS point record
+// Classification of LAS data record
 func (c *ClassificationBitField) Classification() byte {
 	return c.Value & uint8(31)
 }
 
-// SetClassification sets the class value for a LAS point record
+// SetClassification sets the class value for a LAS data record
 func (c *ClassificationBitField) SetClassification(value uint8) {
 	c.Value = (c.Value & uint8(224)) | (value & uint8(31))
 }
@@ -1889,7 +1889,7 @@ func (c *ClassificationBitField) ClassificationString() string {
 	case classVal == 6:
 		return "Building"
 	case classVal == 7:
-		return "Low point (noise)"
+		return "Low data (noise)"
 	case classVal == 8:
 		return "Reserved"
 	case classVal == 9:
@@ -1921,12 +1921,12 @@ func (c *ClassificationBitField) ClassificationString() string {
 	}
 }
 
-// Synthetic returns `true` if the point is synthetic, `false` otherwise
+// Synthetic returns `true` if the data is synthetic, `false` otherwise
 func (c *ClassificationBitField) Synthetic() bool {
 	return (c.Value & uint8(32)) == uint8(32)
 }
 
-// SetSynthetic sets the value of synthetic for the point
+// SetSynthetic sets the value of synthetic for the data
 func (c *ClassificationBitField) SetSynthetic(val bool) {
 	if val {
 		c.Value = c.Value | uint8(32)
@@ -1935,12 +1935,12 @@ func (c *ClassificationBitField) SetSynthetic(val bool) {
 	}
 }
 
-// Keypoint returns `true` if the point is a keypoint, `false` otherwise
+// Keypoint returns `true` if the data is a keypoint, `false` otherwise
 func (c *ClassificationBitField) Keypoint() bool {
 	return (c.Value & uint8(64)) == uint8(64)
 }
 
-// SetKeypoint sets the value of the keypoint field for this point
+// SetKeypoint sets the value of the keypoint field for this data
 func (c *ClassificationBitField) SetKeypoint(val bool) {
 	if val {
 		c.Value = c.Value | uint8(64)
@@ -1949,12 +1949,12 @@ func (c *ClassificationBitField) SetKeypoint(val bool) {
 	}
 }
 
-// Withheld returns `true` if the point is withehld, `false` otherwise
+// Withheld returns `true` if the data is withehld, `false` otherwise
 func (c *ClassificationBitField) withheld() bool {
 	return (c.Value & uint8(128)) == uint8(128)
 }
 
-// SetWithheld sets the value of the withheld field for this point
+// SetWithheld sets the value of the withheld field for this data
 func (c *ClassificationBitField) SetWithheld(val bool) {
 	if val {
 		c.Value = c.Value | uint8(128)
@@ -1963,7 +1963,7 @@ func (c *ClassificationBitField) SetWithheld(val bool) {
 	}
 }
 
-// RgbData holds LAS point red-green-blue colour data
+// RgbData holds LAS data red-green-blue colour data
 type RgbData struct {
 	Red   uint16
 	Green uint16

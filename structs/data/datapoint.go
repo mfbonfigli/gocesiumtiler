@@ -1,8 +1,8 @@
-package octree
+package data
 
 // Contains data of a Point Cloud Point, namely X,Y,Z coords,
 // R,G,B color components, Intensity and Classification
-type OctElement struct {
+type Point struct {
 	X              float64
 	Y              float64
 	Z              float64
@@ -13,9 +13,9 @@ type OctElement struct {
 	Classification uint8
 }
 
-// Builds a new OctElement from the given coordinates, colors, intensity and classification values
-func NewOctElement(X, Y, Z float64, R, G, B, Intensity, Classification uint8) *OctElement {
-	return &OctElement{
+// Builds a new Point from the given coordinates, colors, intensity and classification values
+func NewPoint(X, Y, Z float64, R, G, B, Intensity, Classification uint8) *Point {
+	return &Point{
 		X:              X,
 		Y:              Y,
 		Z:              Z,

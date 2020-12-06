@@ -24,69 +24,79 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mfbonfigli/gocesiumtiler/structs/octree"
+	"github.com/mfbonfigli/gocesiumtiler/app"
+	"github.com/mfbonfigli/gocesiumtiler/converters/gh_ellipsoid_to_geoid_z_converter"
+	"github.com/mfbonfigli/gocesiumtiler/converters/proj4_coordinate_converter"
+	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
+	"github.com/mfbonfigli/gocesiumtiler/utils"
 	"log"
 	"os"
 	"time"
 )
 
-var logEnabled = true
-var timestampEnabled = true
+const VERSION = "1.0.3"
+
+const logo = `
+                           _                 _   _ _
+  __ _  ___   ___ ___  ___(_)_   _ _ __ ___ | |_(_) | ___ _ __ 
+ / _  |/ _ \ / __/ _ \/ __| | | | | '_   _ \| __| | |/ _ \ '__|
+| (_| | (_) | (_|  __/\__ \ | |_| | | | | | | |_| | |  __/ |   
+ \__, |\___/ \___\___||___/_|\__,_|_| |_| |_|\__|_|_|\___|_|   
+  __| | A Cesium Point Cloud tile generator written in golang
+ |___/  Copyright 2019 - Massimo Federico Bonfigli    
+`
 
 func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
 
 	// Retrieve command line args
-	input := flag.String("input", "", "input las file/folder")
-	output := flag.String("output", "", "output folder")
-	srid := flag.Int("srid", 4326, "EPSG srid or input points")
-	zOffset := flag.Float64("zoffset", 0, "Vertical offset to apply in meters")
-	maxNumPts := flag.Int("maxpts", 50000, "Max number of points per tile")
-	zGeoidCorrection := flag.Bool("geoid", false, "Enables Geoid to Ellipsoid elevation correction")
-	folderProcessing := flag.Bool("folder", false, "Enables processing of all las files from input folder. Input must be a folder if specified")
-	recursiveFolderProcessing := flag.Bool("recursive", false, "Enables recursive lookup for all .las files inside the subfolders")
-	silent := flag.Bool("silent", false, "suppresses all the non-error messages")
-	logTimestamp := flag.Bool("timestamp", false, "adds timestamp to log messages")
-	hq := flag.Bool("hq", false, "enables the high quality random pick algorithm")
-	help := flag.Bool("help", false, "prints the help")
-
-	flag.Parse()
+	flags := utils.ParseFlags()
 
 	// Prints the command line flag description
-	if *help {
-		fmt.Println("* Cesium Point Cloud Tiler *")
-		fmt.Println("* Copyright 2019 Massimo Federico Bonfigli *")
-		fmt.Println("* ")
-		fmt.Println("* a command line tool for generating cesium 3D tiles of point clouds from LAS files")
-		fmt.Println("")
-		fmt.Println("")
-		fmt.Println("Command line flags: ")
-		flag.CommandLine.SetOutput(os.Stdout)
-		flag.PrintDefaults()
+	if *flags.Help {
+		showHelp()
+		return
+	}
+
+	if *flags.Version {
+		printVersion()
 		return
 	}
 
 	// set logging and timestamp logging
-	logEnabled = !*silent
-	timestampEnabled = *logTimestamp
+	if *flags.Silent {
+		utils.DisableLogger()
+	} else {
+		printLogo()
+	}
+	if !*flags.LogTimestamp {
+		utils.DisableLoggerTimestamp()
+	}
 
 	// eventually set HQ strategy
-	strategy := octree.FullyRandom
-	if *hq {
-		strategy = octree.BoxedRandom
+	strategy := tiler.FullyRandom
+	if *flags.Hq {
+		strategy = tiler.BoxedRandom
 	}
+
+	// default converter services
+	var coordinateConverterService = proj4_coordinate_converter.NewProj4CoordinateConverter()
+	var elevationConverterService = gh_ellipsoid_to_geoid_z_converter.NewGHElevationConverter(coordinateConverterService)
+
 	// Put args inside a TilerOptions struct
-	opts := octree.TilerOptions{
-		Input:                  *input,
-		Output:                 *output,
-		Srid:                   *srid,
-		ZOffset:                *zOffset,
-		MaxNumPointsPerNode:    int32(*maxNumPts),
-		EnableGeoidZCorrection: *zGeoidCorrection,
-		FolderProcessing:       *folderProcessing,
-		Recursive:              *recursiveFolderProcessing,
-		Silent:                 *silent,
+	opts := tiler.TilerOptions{
+		Input:                  *flags.Input,
+		Output:                 *flags.Output,
+		Srid:                   *flags.Srid,
+		ZOffset:                *flags.ZOffset,
+		MaxNumPointsPerNode:    int32(*flags.MaxNumPts),
+		EnableGeoidZCorrection: *flags.ZGeoidCorrection,
+		FolderProcessing:       *flags.FolderProcessing,
+		Recursive:              *flags.RecursiveFolderProcessing,
+		Silent:                 *flags.Silent,
 		Strategy:               strategy,
+		CoordinateConverter:    coordinateConverterService,
+		ElevationConverter:     elevationConverterService,
 	}
 
 	// Validate TilerOptions
@@ -96,17 +106,17 @@ func main() {
 
 	// Starts the tiler
 	// defer timeTrack(time.Now(), "tiler")
-	err := RunTiler(&opts)
+	err := app.RunTiler(&opts)
 	if err != nil {
 		log.Fatal("Error while tiling: ", err)
 	} else {
-		LogOutput("Conversion Completed")
+		utils.LogOutput("Conversion Completed")
 	}
 }
 
 // Validates the input options provided to the command line tool checking
 // that input and output folders/files exist
-func validateOptions(opts *octree.TilerOptions) (string, bool) {
+func validateOptions(opts *tiler.TilerOptions) (string, bool) {
 	if _, err := os.Stat(opts.Input); os.IsNotExist(err) {
 		return "Input file/folder not found", false
 	}
@@ -118,18 +128,25 @@ func validateOptions(opts *octree.TilerOptions) (string, bool) {
 
 func timeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
-	if logEnabled {
-		log.Printf("%s took %s", name, elapsed)
-	}
+	utils.LogOutput(fmt.Sprintf("%s took %s", name, elapsed))
 }
 
-func LogOutput(val ...interface{}) {
-	if logEnabled {
-		if timestampEnabled {
-			fmt.Print("[" + time.Now().Format("2006-01-02 15.04:05.000") + "] ")
-			fmt.Println(val...)
-		} else {
-			fmt.Println(val...)
-		}
-	}
+func printLogo() {
+	fmt.Println(logo)
+}
+
+func showHelp() {
+	printLogo()
+	fmt.Println("***")
+	fmt.Println("GoCesiumTiler is a tool that processes LAS files and transforms them in a 3D Tiles data structure consumable by Cesium.js")
+	printVersion()
+	fmt.Println("***")
+	fmt.Println("")
+	fmt.Println("Command line flags: ")
+	flag.CommandLine.SetOutput(os.Stdout)
+	flag.PrintDefaults()
+}
+
+func printVersion() {
+	fmt.Println("v." + VERSION)
 }

@@ -1,0 +1,4 @@
+github.com/xeonx/geom v0.0.0-20151223130215-76a21efc1ce4 h1:euU/zmXMiiVk7D2MFr+DowxhR5vneLsrvHsEL+2oj5Q=
+github.com/xeonx/geom v0.0.0-20151223130215-76a21efc1ce4/go.mod h1:ZPykJRloc9d9XR8xLVEVXdBPfUC73Z+yzOQU/fAEc8g=
+github.com/xeonx/proj4 v0.0.0-20151223112312-c52078bad901 h1:iSCvUcZhW/WSjZ80YFQDnvoFFBUmf/dQtScWFDBm5uI=
+github.com/xeonx/proj4 v0.0.0-20151223112312-c52078bad901/go.mod h1:va4ShuSDPhBD8tK7kyEMdVqhjAvZmTzWdxAKtkPbnjA=

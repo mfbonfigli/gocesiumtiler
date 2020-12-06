@@ -686,7 +686,7 @@ var planarConfiguationMap = map[uint]string{
 var sampleFormatMap = map[uint]string{
 	1: "Unsigned integer data",
 	2: "Signed integer data",
-	3: "Floating point data",
+	3: "Floating data data",
 	4: "Undefined data format",
 }
 

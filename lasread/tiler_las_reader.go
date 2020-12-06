@@ -7,30 +7,45 @@ package lidario
 
 import (
 	"encoding/binary"
-	"github.com/mfbonfigli/gocesiumtiler/converters"
-	"github.com/mfbonfigli/gocesiumtiler/structs"
-	"github.com/mfbonfigli/gocesiumtiler/structs/octree"
 	"io"
 	"log"
+	"github.com/mfbonfigli/gocesiumtiler/converters"
+	"github.com/mfbonfigli/gocesiumtiler/structs/data"
+	"github.com/mfbonfigli/gocesiumtiler/structs/geometry"
+	"github.com/mfbonfigli/gocesiumtiler/structs/point_loader"
 	"os"
 	"runtime"
 	"sync"
 )
 
-// NewLasFile creates a new LasFile structure which stores the points data directly into OctElement instances
-// which can be retrieved by index using the GetOctElement function
-func NewLasFileForTiler(fileName string, zCorrection func(lat, lon, z float64) float64, inSrid int, loader octree.Loader) (*LasFile, error) {
+type LasFileLoader struct {
+	CoordinateConverter converters.CoordinateConverter
+	ElevationConverter  converters.EllipsoidToGeoidZConverter
+	Loader              point_loader.Loader
+}
+
+func NewLasFileLoader(coordinateConverter converters.CoordinateConverter, elevationConverter converters.EllipsoidToGeoidZConverter, loader point_loader.Loader) *LasFileLoader {
+	return &LasFileLoader{
+		CoordinateConverter: coordinateConverter,
+		ElevationConverter:  elevationConverter,
+		Loader:              loader,
+	}
+}
+
+// NewLasFile creates a new LasFile structure which stores the points data directly into Point instances
+// which can be retrieved by index using the GetPoint function
+func (lasFileLoader *LasFileLoader) LoadLasFile(fileName string, zCorrection converters.ElevationCorrector, inSrid int) (*LasFile, error) {
 	// initialize the VLR array
 	vlrs := []VLR{}
 	las := LasFile{fileName: fileName, fileMode: "r", Header: LasHeader{}, VlrData: vlrs}
-	if err := las.readForOctree(zCorrection, inSrid, loader); err != nil {
+	if err := lasFileLoader.readForOctree(zCorrection, inSrid, &las); err != nil {
 		return &las, err
 	}
 	return &las, nil
 }
 
-// Reads the las file and produces a LasFile struct instance loading points data into its inner list of OctElements
-func (las *LasFile) readForOctree(zCorrection func(lat, lon, z float64) float64, inSrid int, loader octree.Loader) error {
+// Reads the las file and produces a LasFile struct instance loading points data into its inner list of Point
+func (lasFileLoader *LasFileLoader) readForOctree(zCorrection converters.ElevationCorrector, inSrid int, las *LasFile) error {
 	var err error
 	if las.f, err = os.Open(las.fileName); err != nil {
 		return err
@@ -58,16 +73,16 @@ func (las *LasFile) readForOctree(zCorrection func(lat, lon, z float64) float64,
 			las.usePointUserdata = false
 		}
 
-		if err := las.readPointsOctElem(zCorrection, inSrid, loader); err != nil {
+		if err := lasFileLoader.readPointsOctElem(zCorrection, inSrid, las); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// Reads all the points of the given las file and parses them into an OctElement data structure which is then stored
+// Reads all the points of the given las file and parses them into a Point data structure which is then stored
 // in the given LasFile instance
-func (las *LasFile) readPointsOctElem(zCorrection func(lat, lon, z float64) float64, inSrid int, loader octree.Loader) error {
+func (lasFileLoader *LasFileLoader) readPointsOctElem(zCorrection converters.ElevationCorrector, inSrid int, las *LasFile) error {
 	las.Lock()
 	defer las.Unlock()
 	// las.pointDataOctElement = make([]octree.OctElement, las.Header.NumberPoints)
@@ -86,7 +101,7 @@ func (las *LasFile) readPointsOctElem(zCorrection func(lat, lon, z float64) floa
 	}
 
 	// Intensity and userdata are both optional. Figure out if they need to be read.
-	// The only way to do this is to compare the point record length by point format
+	// The only way to do this is to compare the data record length by data format
 	recLengths := [4][4]int{{20, 18, 19, 17}, {28, 26, 27, 25}, {26, 24, 25, 23}, {34, 32, 33, 31}}
 
 	if las.Header.PointRecordLength == recLengths[las.Header.PointFormatID][0] {
@@ -163,18 +178,17 @@ func (las *LasFile) readPointsOctElem(zCorrection func(lat, lon, z float64) floa
 					offset += 2
 					// las.rgbData[i] = rgb
 				}
-				tr, err := converters.Convert(inSrid, 4326, structs.Coordinate{X: &X, Y: &Y, Z: &Z})
+				tr, err := lasFileLoader.CoordinateConverter.ConvertCoordinateSrid(inSrid, 4326, geometry.Coordinate{X: &X, Y: &Y, Z: &Z})
 				if err != nil {
 					log.Fatal(err)
 				}
-				elem := *octree.NewOctElement(*tr.X, *tr.Y, zCorrection(*tr.X, *tr.Y, *tr.Z), R, G, B, Intensity, Classification)
-				loader.AddElement(&elem)
+				elem := *data.NewPoint(*tr.X, *tr.Y, zCorrection.CorrectElevation(*tr.X, *tr.Y, *tr.Z), R, G, B, Intensity, Classification)
+				lasFileLoader.Loader.AddElement(&elem)
 				// las.pointDataOctElement[i] = elem
 			}
 		}(startingPoint, endingPoint)
 		startingPoint = endingPoint + 1
 	}
 	wg.Wait()
-	converters.DeallocateProjection(inSrid)
 	return nil
 }

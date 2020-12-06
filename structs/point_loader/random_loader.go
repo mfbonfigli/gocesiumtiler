@@ -1,16 +1,17 @@
-package octree
+package point_loader
 
 import (
+	"github.com/mfbonfigli/gocesiumtiler/structs/data"
 	"math"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 )
 
-// Stores OctElements and returns them randomly
+// Stores Points and returns them randomly
 type RandomLoader struct {
 	sync.Mutex
-	fullyRandomList                    []*OctElement
+	fullyRandomList                    []*data.Point
 	currentKeyIndex                    int64
 	minX, maxX, minY, maxY, minZ, maxZ float64
 }
@@ -28,14 +29,14 @@ func NewRandomLoader() *RandomLoader {
 	}
 }
 
-func (eb *RandomLoader) AddElement(e *OctElement) {
+func (eb *RandomLoader) AddElement(e *data.Point) {
 	eb.Lock()
 	eb.fullyRandomList = append(eb.fullyRandomList, e)
 	eb.recomputeBoundsFromElement(e)
 	eb.Unlock()
 }
 
-func (eb *RandomLoader) GetNext() (*OctElement, bool) {
+func (eb *RandomLoader) GetNext() (*data.Point, bool) {
 	length := len(eb.fullyRandomList)
 	counter := int(atomic.AddInt64(&eb.currentKeyIndex, 1))
 	if counter > length-1 {
@@ -50,8 +51,8 @@ func (eb *RandomLoader) Initialize() {
 	eb.currentKeyIndex = -1
 }
 
-// Updates the point cloud bounds as per loaded RandomLoader elements and given additional element
-func (eb *RandomLoader) recomputeBoundsFromElement(element *OctElement) {
+// Updates the data cloud bounds as per loaded RandomLoader elements and given additional element
+func (eb *RandomLoader) recomputeBoundsFromElement(element *data.Point) {
 	eb.minX = math.Min(float64(element.X), eb.minX)
 	eb.minY = math.Min(float64(element.Y), eb.minY)
 	eb.minZ = math.Min(float64(element.Z), eb.minZ)

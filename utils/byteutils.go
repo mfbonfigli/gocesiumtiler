@@ -34,3 +34,4 @@ func ConvertTruncateFloat64ToFloat32ByteArray(inData []float64) []uint8 {
 	}
 	return outData
 }
+
