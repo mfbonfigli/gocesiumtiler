@@ -34,6 +34,8 @@ import (
 	"time"
 )
 
+const VERSION = "1.0.3"
+
 const logo = `
                            _                 _   _ _
   __ _  ___   ___ ___  ___(_)_   _ _ __ ___ | |_(_) | ___ _ __ 
@@ -44,7 +46,6 @@ const logo = `
  |___/  Copyright 2019 - Massimo Federico Bonfigli    
 `
 
-
 func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
 
@@ -54,6 +55,11 @@ func main() {
 	// Prints the command line flag description
 	if *flags.Help {
 		showHelp()
+		return
+	}
+
+	if *flags.Version {
+		printVersion()
 		return
 	}
 
@@ -133,9 +139,14 @@ func showHelp() {
 	printLogo()
 	fmt.Println("***")
 	fmt.Println("GoCesiumTiler is a tool that processes LAS files and transforms them in a 3D Tiles data structure consumable by Cesium.js")
+	printVersion()
 	fmt.Println("***")
 	fmt.Println("")
 	fmt.Println("Command line flags: ")
 	flag.CommandLine.SetOutput(os.Stdout)
 	flag.PrintDefaults()
+}
+
+func printVersion() {
+	fmt.Println("v." + VERSION)
 }
