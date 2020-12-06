@@ -24,10 +24,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/mfbonfigli/gocesiumtiler/app"
 	"github.com/mfbonfigli/gocesiumtiler/converters/gh_ellipsoid_to_geoid_z_converter"
 	"github.com/mfbonfigli/gocesiumtiler/converters/proj4_coordinate_converter"
 	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
-	"github.com/mfbonfigli/gocesiumtiler/app"
 	"github.com/mfbonfigli/gocesiumtiler/utils"
 	"log"
 	"os"
@@ -42,8 +42,6 @@ const logo = `
  \__, |\___/ \___\___||___/_|\__,_|_| |_| |_|\__|_|_|\___|_|   
  |___/ A Cesium Point Cloud tile generator written in golang     
 `
-
-
 
 func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
@@ -139,7 +137,7 @@ func timeTrack(start time.Time, name string) {
 }
 
 func printLogo() {
-	fmt.Println( logo)
+	fmt.Println(logo)
 }
 
 func showHelp() {
