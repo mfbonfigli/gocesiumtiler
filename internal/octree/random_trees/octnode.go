@@ -1,10 +1,11 @@
-package octree
+package random_trees
 
 import "C"
 import (
 	"fmt"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
+	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
 	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 	"strings"
 	"sync"
@@ -14,9 +15,9 @@ import (
 // Models a node of the octree, which can either be a leaf (a node without children nodes) or not. Each Node can contain
 // up to eight children OctNodes
 type octNode struct {
-	parent              INode
+	parent              octree.INode
 	boundingBox         *geometry.BoundingBox
-	children            [8]INode
+	children            [8]octree.INode
 	points              []*data.Point
 	depth               uint8
 	globalChildrenCount int64
@@ -28,7 +29,7 @@ type octNode struct {
 }
 
 // Instantiates a new octNode
-func NewOctNode(boundingBox *geometry.BoundingBox, opts *tiler.TilerOptions, depth uint8, parent INode) INode {
+func NewOctNode(boundingBox *geometry.BoundingBox, opts *tiler.TilerOptions, depth uint8, parent octree.INode) octree.INode {
 	octNode := octNode{
 		parent:              parent,
 		boundingBox:         boundingBox,
@@ -71,7 +72,7 @@ func (octNode *octNode) AddDataPoint(element *data.Point) {
 	atomic.AddInt64(&octNode.globalChildrenCount, 1)
 }
 
-func (octNode *octNode) GetParent() INode {
+func (octNode *octNode) GetParent() octree.INode {
 	return octNode.parent
 }
 
@@ -79,7 +80,7 @@ func (octNode *octNode) GetBoundingBox() *geometry.BoundingBox {
 	return octNode.boundingBox
 }
 
-func (octNode *octNode) GetChildren() [8]INode {
+func (octNode *octNode) GetChildren() [8]octree.INode {
 	return octNode.children
 }
 

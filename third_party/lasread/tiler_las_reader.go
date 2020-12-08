@@ -8,11 +8,9 @@ package lidario
 import (
 	"encoding/binary"
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
-	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
 	"io"
-	"log"
 	"os"
 	"runtime"
 	"sync"
@@ -21,31 +19,31 @@ import (
 type LasFileLoader struct {
 	CoordinateConverter converters.CoordinateConverter
 	ElevationConverter  converters.EllipsoidToGeoidZConverter
-	Loader              octree.ITree
+	Tree                octree.ITree
 }
 
 func NewLasFileLoader(coordinateConverter converters.CoordinateConverter, elevationConverter converters.EllipsoidToGeoidZConverter, tree octree.ITree) *LasFileLoader {
 	return &LasFileLoader{
 		CoordinateConverter: coordinateConverter,
 		ElevationConverter:  elevationConverter,
-		Loader:              tree,
+		Tree:                tree,
 	}
 }
 
 // NewLasFile creates a new LasFile structure which stores the points data directly into Point instances
 // which can be retrieved by index using the GetPoint function
-func (lasFileLoader *LasFileLoader) LoadLasFile(fileName string, zCorrection converters.ElevationCorrector, inSrid int) (*LasFile, error) {
+func (lasFileLoader *LasFileLoader) LoadLasFile(fileName string, inSrid int) (*LasFile, error) {
 	// initialize the VLR array
 	vlrs := []VLR{}
 	las := LasFile{fileName: fileName, fileMode: "r", Header: LasHeader{}, VlrData: vlrs}
-	if err := lasFileLoader.readForOctree(zCorrection, inSrid, &las); err != nil {
+	if err := lasFileLoader.readForOctree(inSrid, &las); err != nil {
 		return &las, err
 	}
 	return &las, nil
 }
 
 // Reads the las file and produces a LasFile struct instance loading points data into its inner list of Point
-func (lasFileLoader *LasFileLoader) readForOctree(zCorrection converters.ElevationCorrector, inSrid int, las *LasFile) error {
+func (lasFileLoader *LasFileLoader) readForOctree(inSrid int, las *LasFile) error {
 	var err error
 	if las.f, err = os.Open(las.fileName); err != nil {
 		return err
@@ -73,7 +71,7 @@ func (lasFileLoader *LasFileLoader) readForOctree(zCorrection converters.Elevati
 			las.usePointUserdata = false
 		}
 
-		if err := lasFileLoader.readPointsOctElem(zCorrection, inSrid, las); err != nil {
+		if err := lasFileLoader.readPointsOctElem(inSrid, las); err != nil {
 			return err
 		}
 	}
@@ -82,7 +80,7 @@ func (lasFileLoader *LasFileLoader) readForOctree(zCorrection converters.Elevati
 
 // Reads all the points of the given las file and parses them into a Point data structure which is then stored
 // in the given LasFile instance
-func (lasFileLoader *LasFileLoader) readPointsOctElem(zCorrection converters.ElevationCorrector, inSrid int, las *LasFile) error {
+func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, las *LasFile) error {
 	las.Lock()
 	defer las.Unlock()
 	// las.pointDataOctElement = make([]octree.OctElement, las.Header.NumberPoints)
@@ -178,12 +176,7 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(zCorrection converters.Ele
 					offset += 2
 					// las.rgbData[i] = rgb
 				}
-				tr, err := lasFileLoader.CoordinateConverter.ConvertCoordinateSrid(inSrid, 4326, geometry.Coordinate{X: &X, Y: &Y, Z: &Z})
-				if err != nil {
-					log.Fatal(err)
-				}
-				elem := *data.NewPoint(*tr.X, *tr.Y, zCorrection.CorrectElevation(*tr.X, *tr.Y, *tr.Z), R, G, B, Intensity, Classification)
-				lasFileLoader.Loader.AddPoint(&elem)
+				lasFileLoader.Tree.AddPoint(&geometry.Coordinate{X: &X, Y: &Y, Z: &Z},R, G,B,Intensity,Classification,inSrid)
 				// las.pointDataOctElement[i] = elem
 			}
 		}(startingPoint, endingPoint)

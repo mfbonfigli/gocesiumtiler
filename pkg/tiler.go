@@ -8,6 +8,7 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters/offset_elevation_corrector"
 	"github.com/mfbonfigli/gocesiumtiler/internal/io"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
+	"github.com/mfbonfigli/gocesiumtiler/internal/octree/random_trees"
 	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 	"github.com/mfbonfigli/gocesiumtiler/third_party/lasread"
 	"github.com/mfbonfigli/gocesiumtiler/tools"
@@ -31,20 +32,20 @@ func RunTiler(opts *tiler.TilerOptions) error {
 	elevationCorrectionAlg := getElevationCorrectionAlgorithm(opts)
 
 	// Define point_loader strategy
-	var tree = getTreeFromOptions(opts)
+	var tree = getTreeFromOptions(opts, elevationCorrectionAlg)
 
 	// load las points in octree buffer
 	for i, filePath := range lasFiles {
 		tools.LogOutput("Processing file " + strconv.Itoa(i+1) + "/" + strconv.Itoa(len(lasFiles)))
-		processLasFile(filePath, opts, tree, elevationCorrectionAlg)
+		processLasFile(filePath, opts, tree)
 	}
 
 	return nil
 }
 
-func processLasFile(filePath string, opts *tiler.TilerOptions, tree octree.ITree, elevationCorrectionAlg converters.ElevationCorrector) {
+func processLasFile(filePath string, opts *tiler.TilerOptions, tree octree.ITree) {
 	// Create empty octree
-	readLasData(filePath, elevationCorrectionAlg, opts, tree)
+	readLasData(filePath, opts, tree)
 	prepareDataStructure(tree)
 	exportToCesiumTileset(tree, opts, getFilenameWithoutExtension(filePath))
 
@@ -52,10 +53,10 @@ func processLasFile(filePath string, opts *tiler.TilerOptions, tree octree.ITree
 	opts.CoordinateConverter.Cleanup()
 }
 
-func readLasData(filePath string, elevationCorrectionAlg converters.ElevationCorrector, opts *tiler.TilerOptions, tree octree.ITree) {
+func readLasData(filePath string, opts *tiler.TilerOptions, tree octree.ITree) {
 	// Reading files
 	tools.LogOutput("> reading data from las file...", filepath.Base(filePath))
-	err := readLas(filePath, elevationCorrectionAlg, opts, tree)
+	err := readLas(filePath, opts, tree)
 
 	if err != nil {
 		log.Fatal(err)
@@ -86,12 +87,12 @@ func getFilenameWithoutExtension(filePath string) string {
 	return nameWext[0 : len(nameWext)-len(extension)]
 }
 
-func getTreeFromOptions(options *tiler.TilerOptions) octree.ITree {
+func getTreeFromOptions(options *tiler.TilerOptions, corrector converters.ElevationCorrector) octree.ITree {
 	switch options.Strategy {
 	case tiler.BoxedRandom:
-		return octree.NewBoxedRandomTree(options)
+		return random_trees.NewBoxedRandomTree(options, options.CoordinateConverter, corrector)
 	case tiler.FullyRandom:
-		return octree.NewRandomTree(options)
+		return random_trees.NewRandomTree(options, options.CoordinateConverter, corrector)
 	}
 
 	log.Fatal("Unrecognized strategy")
@@ -142,11 +143,11 @@ func getLasFilesFromInputFolder(opts *tiler.TilerOptions) []string {
 }
 
 // Reads the given las file and preloads data in a list of Point
-func readLas(file string, zCorrection converters.ElevationCorrector, opts *tiler.TilerOptions, tree octree.ITree) error {
+func readLas(file string, opts *tiler.TilerOptions, tree octree.ITree) error {
 	var lf *lidario.LasFile
 	var err error
 	var lasFileLoader = lidario.NewLasFileLoader(opts.CoordinateConverter, opts.ElevationConverter, tree)
-	lf, err = lasFileLoader.LoadLasFile(file, zCorrection, opts.Srid)
+	lf, err = lasFileLoader.LoadLasFile(file, opts.Srid)
 	if err != nil {
 		return err
 	}
