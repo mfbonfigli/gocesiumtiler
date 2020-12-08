@@ -24,11 +24,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mfbonfigli/gocesiumtiler/app"
-	"github.com/mfbonfigli/gocesiumtiler/converters/gh_ellipsoid_to_geoid_z_converter"
-	"github.com/mfbonfigli/gocesiumtiler/converters/proj4_coordinate_converter"
-	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
-	"github.com/mfbonfigli/gocesiumtiler/utils"
+	"github.com/mfbonfigli/gocesiumtiler/pkg"
+	"github.com/mfbonfigli/gocesiumtiler/internal/converters/gh_ellipsoid_to_geoid_z_converter"
+	"github.com/mfbonfigli/gocesiumtiler/internal/converters/proj4_coordinate_converter"
+	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
+	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"log"
 	"os"
 	"time"
@@ -50,7 +50,7 @@ func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
 
 	// Retrieve command line args
-	flags := utils.ParseFlags()
+	flags := tools.ParseFlags()
 
 	// Prints the command line flag description
 	if *flags.Help {
@@ -65,12 +65,12 @@ func main() {
 
 	// set logging and timestamp logging
 	if *flags.Silent {
-		utils.DisableLogger()
+		tools.DisableLogger()
 	} else {
 		printLogo()
 	}
 	if !*flags.LogTimestamp {
-		utils.DisableLoggerTimestamp()
+		tools.DisableLoggerTimestamp()
 	}
 
 	// eventually set HQ strategy
@@ -106,11 +106,11 @@ func main() {
 
 	// Starts the tiler
 	// defer timeTrack(time.Now(), "tiler")
-	err := app.RunTiler(&opts)
+	err := pkg.RunTiler(&opts)
 	if err != nil {
 		log.Fatal("Error while tiling: ", err)
 	} else {
-		utils.LogOutput("Conversion Completed")
+		tools.LogOutput("Conversion Completed")
 	}
 }
 
@@ -128,7 +128,7 @@ func validateOptions(opts *tiler.TilerOptions) (string, bool) {
 
 func timeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
-	utils.LogOutput(fmt.Sprintf("%s took %s", name, elapsed))
+	tools.LogOutput(fmt.Sprintf("%s took %s", name, elapsed))
 }
 
 func printLogo() {

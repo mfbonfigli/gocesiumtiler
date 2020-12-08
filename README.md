@@ -59,7 +59,7 @@ in the PATH environment variable. More information on cgo compiler are available
 Under linux you will have to have `gcc` installed. Also make sure go is configured to pass the correct flags to gcc. In particular if you encounter compilation errors similar to `undefined reference to 'sqrt'` it means that it is not linking the standard math libraries. A way to fix this is to add `-lm` to the `CGO_LDFLAGS`environment variable, for example by running `export CGO_LDFLAGS="-g -O2 -lm"`.
 ## Usage
 
-<b>The code expects to find a copy of the [static](static) folder in the same path where the compiled executable runs.</b>
+<b>The code expects to find a copy of the [static](assets) folder in the same path where the compiled executable runs.</b>
 
 To run just execute the binary tool with the appropriate flags.
 
