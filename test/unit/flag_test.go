@@ -1,4 +1,4 @@
-package test
+package unit_test
 
 import (
 	"flag"
@@ -18,7 +18,7 @@ func TestInputFlagIsParsed(t *testing.T) {
 	}
 }
 
-func TestiFlagIsParsed(t *testing.T) {
+func TestIFlagIsParsed(t *testing.T) {
 	expected := "/home/user/file.las"
 	os.Args = []string{"gocesiumtiler", "-i=" + expected}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -38,7 +38,7 @@ func TestOutputFlagIsParsed(t *testing.T) {
 	}
 }
 
-func TestoFlagIsParsed(t *testing.T) {
+func TestOFlagIsParsed(t *testing.T) {
 	expected := "/home/user/output"
 	os.Args = []string{"gocesiumtiler", "-o=" + expected}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -57,7 +57,7 @@ func TestSridFlagIsParsed(t *testing.T) {
 		t.Errorf("Expected Srid = %d, got %d", expected, *flags.Srid)
 	}
 }
-func TesteFlagIsParsed(t *testing.T) {
+func TestEFlagIsParsed(t *testing.T) {
 	expected := 32633
 	os.Args = []string{"gocesiumtiler", "-e=" + strconv.Itoa(expected)}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -87,7 +87,7 @@ func TestZOffsetFlagIsParsed(t *testing.T) {
 	}
 }
 
-func TestzFlagIsParsed(t *testing.T) {
+func TestZFlagIsParsed(t *testing.T) {
 	expected := 10.0
 	os.Args = []string{"gocesiumtiler", "-z=10"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -116,7 +116,7 @@ func TestMaxPtsFlagIsParsed(t *testing.T) {
 		t.Errorf("Expected MaxNumPts = %d, got %d", expected, *flags.MaxNumPts)
 	}
 }
-func TestmFlagIsParsed(t *testing.T) {
+func TestMFlagIsParsed(t *testing.T) {
 	expected := 2000
 	os.Args = []string{"gocesiumtiler", "-m=2000"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -146,7 +146,7 @@ func TestGeoidFlagIsParsed(t *testing.T) {
 	}
 }
 
-func TestgFlagIsParsed(t *testing.T) {
+func TestGFlagIsParsed(t *testing.T) {
 	expected := true
 	os.Args = []string{"gocesiumtiler", "-g"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -176,7 +176,7 @@ func TestFolderProcessingFlagIsParsed(t *testing.T) {
 	}
 }
 
-func TestfFlagIsParsed(t *testing.T) {
+func TestFFlagIsParsed(t *testing.T) {
 	expected := true
 	os.Args = []string{"gocesiumtiler", "-f"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -206,7 +206,7 @@ func TestRecursiveFolderProcessingFlagIsParsed(t *testing.T) {
 	}
 }
 
-func TestrFlagIsParsed(t *testing.T) {
+func TestRFlagIsParsed(t *testing.T) {
 	expected := true
 	os.Args = []string{"gocesiumtiler", "-r"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -236,7 +236,7 @@ func TestSilentFlagIsParsed(t *testing.T) {
 	}
 }
 
-func TestsFlagIsParsed(t *testing.T) {
+func TestSFlagIsParsed(t *testing.T) {
 	expected := true
 	os.Args = []string{"gocesiumtiler", "-silent"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -266,7 +266,7 @@ func TestLogTimestampFlagIsParsed(t *testing.T) {
 	}
 }
 
-func TesttFlagIsParsed(t *testing.T) {
+func TestTFlagIsParsed(t *testing.T) {
 	expected := true
 	os.Args = []string{"gocesiumtiler", "-timestamp"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -316,7 +316,7 @@ func TestHelpFlagIsParsed(t *testing.T) {
 	}
 }
 
-func TesthFlagIsParsed(t *testing.T) {
+func TestHFlagIsParsed(t *testing.T) {
 	expected := true
 	os.Args = []string{"gocesiumtiler", "-h"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)

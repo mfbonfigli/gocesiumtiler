@@ -57,8 +57,8 @@ func NewBoundingBoxFromParent(parent *BoundingBox, octant *uint8) *BoundingBox {
 	return NewBoundingBox(xMin, xMax, yMin, yMax, zMin, zMax)
 }
 
-// Returns the approximate volume of the given bounding box, assuming that it is storing EPSG:4978 coordinates
-func (bbox *BoundingBox) GetVolume() float64 {
+// Returns the approximate volume of the given bounding box, assuming that it is storing EPSG:4326 coordinates and Z in meters
+func (bbox *BoundingBox) GetWGS84Volume() float64 {
 	b := bbox.distance(bbox.Xmin, bbox.Xmax, bbox.Ymin, bbox.Ymin, 0, 0)
 	h := bbox.distance(bbox.Xmin, bbox.Xmin, bbox.Ymin, bbox.Ymax, 0, 0)
 	e := bbox.Zmax - bbox.Zmin

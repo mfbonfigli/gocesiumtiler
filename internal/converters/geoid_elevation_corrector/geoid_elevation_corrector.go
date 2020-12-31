@@ -16,7 +16,7 @@ func NewGeoidElevationCorrector(offset float64, elevationConverter converters.El
 	var offsetElevationCorrector = offset_elevation_corrector.NewOffsetElevationCorrector(offset)
 	return &GeoidElevationCorrector{
 		offsetElevationCorrector: offsetElevationCorrector,
-		elevationConverterBuffer: converters.NewElevationConverterBuffer(4326, 360/6371000*math.Pi*2, elevationConverter),
+		elevationConverterBuffer: converters.NewElevationConverterBuffer(4326, 360/(6371000*math.Pi*2), elevationConverter),
 	}
 }
 

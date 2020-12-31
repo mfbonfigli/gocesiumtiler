@@ -106,7 +106,7 @@ func main() {
 
 	// Starts the tiler
 	// defer timeTrack(time.Now(), "tiler")
-	err := pkg.RunTiler(&opts)
+	err := pkg.NewTiler(tools.NewFileFinder(), pkg.NewAlgorithmManager()).RunTiler(&opts)
 	if err != nil {
 		log.Fatal("Error while tiling: ", err)
 	} else {

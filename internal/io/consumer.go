@@ -4,20 +4,27 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"math"
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
-	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
 	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 	"github.com/mfbonfigli/gocesiumtiler/tools"
-	"os"
+	"io/ioutil"
+	"math"
 	"path"
 	"strconv"
 	"strings"
 	"sync"
 )
+
+// struct used to store data in an intermediate format
+type intermediateData struct {
+	coords          []float64
+	colors          []uint8
+	intensities     []uint8
+	classifications []uint8
+	numPoints       int
+}
 
 // Continually consumes WorkUnits submitted to a work channel producing corresponding content.pnts files and tileset.json files
 // continues working until work channel is closed or if an error is raised. In this last case submits the error to an error
@@ -69,21 +76,54 @@ func writeBinaryPntsFile(workUnit WorkUnit, coordinateConverter converters.Coord
 	node := workUnit.OctNode
 
 	// Create base folder if it does not exist
-	if _, err := os.Stat(parentFolder); os.IsNotExist(err) {
-		err := os.MkdirAll(parentFolder, 0777)
-		if err != nil {
-			return err
-		}
+	err := tools.CreateDirectoryIfDoesNotExist(parentFolder)
+	if err != nil {
+		return err
 	}
 
-	// Constructing pnts output file path
-	pntsFilePath := path.Join(parentFolder, "content.pnts")
-
 	pointNo := len(node.GetPoints())
-	coords := make([]float64, pointNo*3)
-	colors := make([]uint8, pointNo*3)
-	intensities := make([]uint8, pointNo)
-	classifications := make([]uint8, pointNo)
+	intermediatePointData, err := generateIntermediateDataForPnts(node, pointNo, coordinateConverter, workUnit.Opts.Srid)
+	if err != nil {
+		return err
+	}
+
+	// Evaluating average X, Y, Z to express coords relative to tile center
+	averageXYZ := computeAverageXYZ(intermediatePointData)
+
+	// Normalizing coordinates relative to average
+	subtractXYZFromIntermediateDataCoords(intermediatePointData, averageXYZ)
+
+	// Coordinate bytes
+	positionBytes := tools.ConvertTruncateFloat64ToFloat32ByteArray(intermediatePointData.coords)
+
+	// Feature table
+	featureTableBytes, featureTableLen := generateFeatureTable(averageXYZ[0], averageXYZ[1], averageXYZ[2], pointNo)
+
+	// Batch table
+	batchTableBytes, batchTableLen := generateBatchTable(pointNo)
+
+	// Appending binary content to slice
+	outputByte := generatePntsByteArray(intermediatePointData, positionBytes, featureTableBytes, featureTableLen, batchTableBytes, batchTableLen)
+
+	// Write binary content to file
+	pntsFilePath := path.Join(parentFolder, "content.pnts")
+	err = ioutil.WriteFile(pntsFilePath, outputByte, 0777)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func generateIntermediateDataForPnts(node octree.INode, numPoints int, coordinateConverter converters.CoordinateConverter, pointSrid int) (*intermediateData, error) {
+	intermediateData := intermediateData{
+		coords:          make([]float64, numPoints*3),
+		colors:          make([]uint8, numPoints*3),
+		intensities:     make([]uint8, numPoints),
+		classifications: make([]uint8, numPoints),
+		numPoints:       numPoints,
+	}
 
 	// Decomposing tile data properties in separate sublists for coords, colors, intensities and classifications
 	for i := 0; i < len(node.GetPoints()); i++ {
@@ -95,77 +135,79 @@ func writeBinaryPntsFile(workUnit WorkUnit, coordinateConverter converters.Coord
 		}
 
 		// ConvertCoordinateSrid coords according to cesium CRS
-		outCrd, err := coordinateConverter.ConvertToWGS84Cartesian(srcCoord, workUnit.Opts.Srid)
+		outCrd, err := coordinateConverter.ConvertToWGS84Cartesian(srcCoord, pointSrid)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		coords[i*3] = *outCrd.X
-		coords[i*3+1] = *outCrd.Y
-		coords[i*3+2] = *outCrd.Z
+		intermediateData.coords[i*3] = *outCrd.X
+		intermediateData.coords[i*3+1] = *outCrd.Y
+		intermediateData.coords[i*3+2] = *outCrd.Z
 
-		colors[i*3] = element.R
-		colors[i*3+1] = element.G
-		colors[i*3+2] = element.B
+		intermediateData.colors[i*3] = element.R
+		intermediateData.colors[i*3+1] = element.G
+		intermediateData.colors[i*3+2] = element.B
 
-		intensities[i] = element.Intensity
-		classifications[i] = element.Classification
-
+		intermediateData.intensities[i] = element.Intensity
+		intermediateData.classifications[i] = element.Classification
 	}
 
-	// Evaluating average X, Y, Z to express coords relative to tile center
-	var avgX, avgY, avgZ float64
-	for i := 0; i < pointNo; i++ {
-		avgX = avgX + coords[i*3]
-		avgY = avgY + coords[i*3+1]
-		avgZ = avgZ + coords[i*3+2]
-	}
-	avgX /= float64(pointNo)
-	avgY /= float64(pointNo)
-	avgZ /= float64(pointNo)
+	return &intermediateData, nil
+}
 
-	// Normalizing coordinates relative to average
-	for i := 0; i < pointNo; i++ {
-		coords[i*3] -= avgX
-		coords[i*3+1] -= avgY
-		coords[i*3+2] -= avgZ
-	}
-	positionBytes := tools.ConvertTruncateFloat64ToFloat32ByteArray(coords)
-
-	// Feature table
-	featureTableStr := generateFeatureTableJsonContent(avgX, avgY, avgZ, pointNo, 0)
+func generateFeatureTable(avgX float64, avgY float64, avgZ float64, numPoints int) ([]byte, int) {
+	featureTableStr := generateFeatureTableJsonContent(avgX, avgY, avgZ, numPoints, 0)
 	featureTableLen := len(featureTableStr)
-	featureTableBytes := []byte(featureTableStr)
+	return []byte(featureTableStr), featureTableLen
+}
 
-	// Batch table
-	batchTableStr := generateBatchTableJsonContent(pointNo, 0)
+func generateBatchTable(numPoints int) ([]byte, int) {
+	batchTableStr := generateBatchTableJsonContent(numPoints, 0)
 	batchTableLen := len(batchTableStr)
-	batchTableBytes := []byte(batchTableStr)
+	return []byte(batchTableStr), batchTableLen
+}
 
-	// Appending binary content to slice
+func generatePntsByteArray(intermediateData *intermediateData, positionBytes []byte, featureTableBytes []byte, featureTableLen int, batchTableBytes []byte, batchTableLen int) []byte {
 	outputByte := make([]byte, 0)
 	outputByte = append(outputByte, []byte("pnts")...)                 // magic
 	outputByte = append(outputByte, tools.ConvertIntToByteArray(1)...) // version number
-	byteLength := 28 + featureTableLen + len(positionBytes) + len(colors)
+	byteLength := 28 + featureTableLen + len(positionBytes) + len(intermediateData.colors)
 	outputByte = append(outputByte, tools.ConvertIntToByteArray(byteLength)...)
-	outputByte = append(outputByte, tools.ConvertIntToByteArray(featureTableLen)...)                       // feature table length
-	outputByte = append(outputByte, tools.ConvertIntToByteArray(len(positionBytes)+len(colors))...)        // feature table binary length
-	outputByte = append(outputByte, tools.ConvertIntToByteArray(batchTableLen)...)                         // batch table length
-	outputByte = append(outputByte, tools.ConvertIntToByteArray(len(intensities)+len(classifications))...) // batch table binary length
-	outputByte = append(outputByte, featureTableBytes...)                                                  // feature table
-	outputByte = append(outputByte, positionBytes...)                                                      // positions array
-	outputByte = append(outputByte, colors...)                                                             // colors array
-	outputByte = append(outputByte, batchTableBytes...)                                                    // batch table
-	outputByte = append(outputByte, intensities...)                                                        // intensities array
-	outputByte = append(outputByte, classifications...)                                                    // classifications array
+	outputByte = append(outputByte, tools.ConvertIntToByteArray(featureTableLen)...)                                                         // feature table length
+	outputByte = append(outputByte, tools.ConvertIntToByteArray(len(positionBytes)+len(intermediateData.colors))...)                         // feature table binary length
+	outputByte = append(outputByte, tools.ConvertIntToByteArray(batchTableLen)...)                                                           // batch table length
+	outputByte = append(outputByte, tools.ConvertIntToByteArray(len(intermediateData.intensities)+len(intermediateData.classifications))...) // batch table binary length
+	outputByte = append(outputByte, featureTableBytes...)                                                                                    // feature table
+	outputByte = append(outputByte, positionBytes...)                                                                                        // positions array
+	outputByte = append(outputByte, intermediateData.colors...)                                                                              // colors array
+	outputByte = append(outputByte, batchTableBytes...)                                                                                      // batch table
+	outputByte = append(outputByte, intermediateData.intensities...)                                                                         // intensities array
+	outputByte = append(outputByte, intermediateData.classifications...)
 
-	// Write binary content to file
-	err := ioutil.WriteFile(pntsFilePath, outputByte, 0777)
+	return outputByte
+}
 
-	if err != nil {
-		return err
+func computeAverageXYZ(intermediatePointData *intermediateData) []float64 {
+	var avgX, avgY, avgZ float64
+
+	for i := 0; i < intermediatePointData.numPoints; i++ {
+		avgX = avgX + intermediatePointData.coords[i*3]
+		avgY = avgY + intermediatePointData.coords[i*3+1]
+		avgZ = avgZ + intermediatePointData.coords[i*3+2]
 	}
-	return nil
+	avgX /= float64(intermediatePointData.numPoints)
+	avgY /= float64(intermediatePointData.numPoints)
+	avgZ /= float64(intermediatePointData.numPoints)
+
+	return []float64{avgX, avgY, avgZ}
+}
+
+func subtractXYZFromIntermediateDataCoords(intermediatePointData *intermediateData, xyz []float64) {
+	for i := 0; i < intermediatePointData.numPoints; i++ {
+		intermediatePointData.coords[i*3] -= xyz[0]
+		intermediatePointData.coords[i*3+1] -= xyz[1]
+		intermediatePointData.coords[i*3+2] -= xyz[2]
+	}
 }
 
 // Generates the json representation of the feature table
@@ -204,16 +246,14 @@ func writeTilesetJsonFile(workUnit WorkUnit, coordinateConverter converters.Coor
 	node := workUnit.OctNode
 
 	// Create base folder if it does not exist
-	if _, err := os.Stat(parentFolder); os.IsNotExist(err) {
-		err := os.MkdirAll(parentFolder, 0777)
-		if err != nil {
-			return err
-		}
+	err := tools.CreateDirectoryIfDoesNotExist(parentFolder)
+	if err != nil {
+		return err
 	}
 
 	// tileset.json file
 	file := path.Join(parentFolder, "tileset.json")
-	jsonData, err := generateTilesetJsonContent(node, workUnit.Opts, coordinateConverter)
+	jsonData, err := generateTilesetJson(node, workUnit.Opts, coordinateConverter)
 	if err != nil {
 		return err
 	}
@@ -228,59 +268,14 @@ func writeTilesetJsonFile(workUnit WorkUnit, coordinateConverter converters.Coor
 }
 
 // Generates the tileset.json content for the given octnode and tileroptions
-func generateTilesetJsonContent(node octree.INode, opts *tiler.TilerOptions, converter converters.CoordinateConverter) ([]byte, error) {
+func generateTilesetJson(node octree.INode, opts *tiler.TilerOptions, converter converters.CoordinateConverter) ([]byte, error) {
 	if !node.IsLeaf() || node.GetParent() == nil {
-		tileset := Tileset{}
-		tileset.Asset = Asset{Version: "1.0"}
-		tileset.GeometricError = computeGeometricError(node)
-		root := Root{}
-		root.Children = []Child{}
-		for i, child := range node.GetChildren() {
-			if child != nil && child.GetGlobalChildrenCount() > 0 {
-				childJson := Child{}
-				filename := "tileset.json"
-				if child.IsLeaf() {
-					filename = "content.pnts"
-				}
-				childJson.Content = Content{
-					Url: strconv.Itoa(i) + "/" + filename,
-				}
-				reg, err := converter.Convert2DBoundingboxToWGS84Region(child.GetBoundingBox(), opts.Srid)
-				if err != nil {
-					return nil, err
-				}
-				childJson.BoundingVolume = BoundingVolume{
-					Region: reg,
-				}
-				childJson.GeometricError = computeGeometricError(child)
-				childJson.Refine = "ADD"
-				root.Children = append(root.Children, childJson)
-			}
-		}
-		root.Content = Content{
-			Url: "content.pnts",
-		}
-		reg, err := converter.Convert2DBoundingboxToWGS84Region(node.GetBoundingBox(), opts.Srid)
-
-		if node.GetParent() == nil && node.IsLeaf() {
-			// only one tile, no LoDs. Estimate geometric error as lenght of diagonal of region
-			var latA = reg[1]
-			var latB = reg[3]
-			var lngA = reg[0]
-			var lngB = reg[2]
-			latA = reg[1]
-			tileset.GeometricError = 6371000 * math.Acos(math.Cos(latA)*math.Cos(latB)*math.Cos(lngB-lngA)+math.Sin(latA)*math.Sin(latB))
-		}
-
+		root, err := generateTilesetRoot(node, converter, opts)
 		if err != nil {
 			return nil, err
 		}
-		root.BoundingVolume = BoundingVolume{
-			Region: reg,
-		}
-		root.GeometricError = computeGeometricError(node)
-		root.Refine = "ADD"
-		tileset.Root = root
+
+		tileset := *generateTileset(node, root, root.BoundingVolume.Region)
 
 		// Outputting a formatted json file
 		e, err := json.MarshalIndent(tileset, "", "\t")
@@ -291,31 +286,83 @@ func generateTilesetJsonContent(node octree.INode, opts *tiler.TilerOptions, con
 		return e, nil
 	}
 
-	return nil, errors.New("this node is a leaf, cannot create tileset json for it")
+	return nil, errors.New("this node is a leaf, cannot create a tileset json for it")
 }
 
-// Computes the geometric error for the given octNode
-func computeGeometricError(node octree.INode) float64 {
-	volume := node.GetBoundingBox().GetVolume()
-	totalRenderedPoints := int64(node.GetLocalChildrenCount())
-	parent := node.GetParent()
-	for parent != nil {
-		for _, e := range parent.GetPoints() {
-			if canBoundingBoxContainElement(e, node.GetBoundingBox()) {
-				totalRenderedPoints++
-			}
-		}
-		parent = parent.GetParent()
+func generateTilesetRoot(node octree.INode, converter converters.CoordinateConverter, opts *tiler.TilerOptions) (*Root, error) {
+	reg, err := converter.Convert2DBoundingboxToWGS84Region(node.GetBoundingBox(), opts.Srid)
+
+	if err != nil {
+		return nil, err
 	}
-	densityWithAllPoints := math.Pow(volume/float64(totalRenderedPoints+node.GetGlobalChildrenCount()-int64(node.GetLocalChildrenCount())), 0.333)
-	densityWIthOnlyThisTile := math.Pow(volume/float64(totalRenderedPoints), 0.333)
 
-	return densityWIthOnlyThisTile - densityWithAllPoints
+	children, err := generateTilesetChildren(node, converter, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	root := Root{
+		Content:        Content{"content.pnts"},
+		BoundingVolume: BoundingVolume{reg},
+		GeometricError: node.ComputeGeometricError(),
+		Refine:         "ADD",
+		Children:       children,
+	}
+
+	return &root, nil
 }
 
-// Checks if the bounding box contains the given element
-func canBoundingBoxContainElement(e *data.Point, bbox *geometry.BoundingBox) bool {
-	return (e.X >= bbox.Xmin && e.X <= bbox.Xmax) &&
-		(e.Y >= bbox.Ymin && e.Y <= bbox.Ymax) &&
-		(e.Z >= bbox.Zmin && e.Z <= bbox.Zmax)
+func generateTileset(node octree.INode, root *Root, tilesetRegion []float64) *Tileset {
+	tileset := Tileset{}
+	tileset.Asset = Asset{Version: "1.0"}
+	tileset.GeometricError = node.ComputeGeometricError()
+
+	if node.GetParent() == nil && node.IsLeaf() {
+		// only one tile, no LoDs. Estimate geometric error as lenght of diagonal of region
+		var latA = tilesetRegion[1]
+		var latB = tilesetRegion[3]
+		var lngA = tilesetRegion[0]
+		var lngB = tilesetRegion[2]
+		latA = tilesetRegion[1]
+		tileset.GeometricError = 6371000 * math.Acos(math.Cos(latA)*math.Cos(latB)*math.Cos(lngB-lngA)+math.Sin(latA)*math.Sin(latB))
+	}
+
+	tileset.Root = *root
+
+	return &tileset
+}
+
+func generateTilesetChildren(node octree.INode, converter converters.CoordinateConverter, opts *tiler.TilerOptions) ([]Child, error) {
+	children := []Child{}
+	for i, child := range node.GetChildren() {
+		if child != nil && child.GetGlobalChildrenCount() > 0 {
+			childJson, err := generateTilesetChild(child, converter, opts, i)
+			if err != nil {
+				return nil, err
+			}
+			children = append(children, *childJson)
+		}
+	}
+	return children, nil
+}
+
+func generateTilesetChild(child octree.INode, converter converters.CoordinateConverter, opts *tiler.TilerOptions, childIndex int) (*Child, error) {
+	childJson := Child{}
+	filename := "tileset.json"
+	if child.IsLeaf() {
+		filename = "content.pnts"
+	}
+	childJson.Content = Content{
+		Url: strconv.Itoa(childIndex) + "/" + filename,
+	}
+	reg, err := converter.Convert2DBoundingboxToWGS84Region(child.GetBoundingBox(), opts.Srid)
+	if err != nil {
+		return nil, err
+	}
+	childJson.BoundingVolume = BoundingVolume{
+		Region: reg,
+	}
+	childJson.GeometricError = child.ComputeGeometricError()
+	childJson.Refine = "ADD"
+	return &childJson, nil
 }

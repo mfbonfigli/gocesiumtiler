@@ -7,6 +7,7 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
 	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
+	"math"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -136,4 +137,31 @@ func getOctantFromElement(element *data.Point, bbox *geometry.BoundingBox) uint8
 // Returns a bounding box from the given box and the given octant index
 func getOctantBoundingBox(octant *uint8, bbox *geometry.BoundingBox) *geometry.BoundingBox {
 	return geometry.NewBoundingBoxFromParent(bbox, octant)
+}
+
+
+// Computes the geometric error for the given octNode
+func (node *octNode) ComputeGeometricError() float64 {
+	volume := node.GetBoundingBox().GetWGS84Volume()
+	totalRenderedPoints := int64(node.GetLocalChildrenCount())
+	parent := node.GetParent()
+	for parent != nil {
+		for _, e := range parent.GetPoints() {
+			if canBoundingBoxContainElement(e, node.GetBoundingBox()) {
+				totalRenderedPoints++
+			}
+		}
+		parent = parent.GetParent()
+	}
+	densityWithAllPoints := math.Pow(volume/float64(totalRenderedPoints+node.GetGlobalChildrenCount()-int64(node.GetLocalChildrenCount())), 0.333)
+	densityWIthOnlyThisTile := math.Pow(volume/float64(totalRenderedPoints), 0.333)
+
+	return densityWIthOnlyThisTile - densityWithAllPoints
+}
+
+// Checks if the bounding box contains the given element
+func canBoundingBoxContainElement(e *data.Point, bbox *geometry.BoundingBox) bool {
+	return (e.X >= bbox.Xmin && e.X <= bbox.Xmax) &&
+		(e.Y >= bbox.Ymin && e.Y <= bbox.Ymax) &&
+		(e.Z >= bbox.Zmin && e.Z <= bbox.Zmax)
 }

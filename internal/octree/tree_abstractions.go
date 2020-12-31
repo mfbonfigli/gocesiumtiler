@@ -26,4 +26,5 @@ type INode interface {
 	IsLeaf() bool
 	IsInitialized() bool
 	PrintStructure()
+	ComputeGeometricError() float64
 }

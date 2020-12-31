@@ -1,4 +1,4 @@
-package test
+package unit_test
 
 import (
 	"bytes"

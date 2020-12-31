@@ -3,36 +3,46 @@ package pkg
 import (
 	"errors"
 	"fmt"
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters/geoid_elevation_corrector"
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters/offset_elevation_corrector"
 	"github.com/mfbonfigli/gocesiumtiler/internal/io"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
-	"github.com/mfbonfigli/gocesiumtiler/internal/octree/random_trees"
 	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 	"github.com/mfbonfigli/gocesiumtiler/third_party/lasread"
 	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"log"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 )
 
+type ITiler interface {
+	RunTiler(opts *tiler.TilerOptions) error
+}
+
+type Tiler struct {
+	fileFinder       tools.IFileFinder
+	algorithmManager IAlgorithmManager
+}
+
+func NewTiler(fileFinder tools.IFileFinder, algorithmManager IAlgorithmManager) ITiler {
+	return &Tiler{
+		fileFinder:       fileFinder,
+		algorithmManager: algorithmManager,
+	}
+}
+
 // Starts the tiling process
-func RunTiler(opts *tiler.TilerOptions) error {
+func (tiler *Tiler) RunTiler(opts *tiler.TilerOptions) error {
 	tools.LogOutput("Preparing list of files to process...")
 
 	// Prepare list of files to process
-	lasFiles := getLasFilesToProcess(opts)
+	lasFiles := tiler.fileFinder.GetLasFilesToProcess(opts)
 
 	// Define elevation (Z) correction algorithm to apply
-	elevationCorrectionAlg := getElevationCorrectionAlgorithm(opts)
+	elevationCorrectionAlg := tiler.algorithmManager.GetElevationCorrectionAlgorithm(opts)
 
 	// Define point_loader strategy
-	var tree = getTreeFromOptions(opts, elevationCorrectionAlg)
+	var tree = tiler.algorithmManager.GetTreeAlgorithm(opts, elevationCorrectionAlg)
 
 	// load las points in octree buffer
 	for i, filePath := range lasFiles {
@@ -85,61 +95,6 @@ func getFilenameWithoutExtension(filePath string) string {
 	nameWext := filepath.Base(filePath)
 	extension := filepath.Ext(nameWext)
 	return nameWext[0 : len(nameWext)-len(extension)]
-}
-
-func getTreeFromOptions(options *tiler.TilerOptions, corrector converters.ElevationCorrector) octree.ITree {
-	switch options.Strategy {
-	case tiler.BoxedRandom:
-		return random_trees.NewBoxedRandomTree(options, options.CoordinateConverter, corrector)
-	case tiler.FullyRandom:
-		return random_trees.NewRandomTree(options, options.CoordinateConverter, corrector)
-	}
-
-	log.Fatal("Unrecognized strategy")
-	return nil
-}
-
-func getElevationCorrectionAlgorithm(opts *tiler.TilerOptions) converters.ElevationCorrector {
-	if !opts.EnableGeoidZCorrection {
-		return offset_elevation_corrector.NewOffsetElevationCorrector(opts.ZOffset)
-	} else {
-		return geoid_elevation_corrector.NewGeoidElevationCorrector(opts.ZOffset, opts.ElevationConverter)
-	}
-}
-
-func getLasFilesToProcess(opts *tiler.TilerOptions) []string {
-	// If folder processing is not enabled then las file is given by -input flag, otherwise look for las in -input folder
-	// eventually excluding nested folders if Recursive flag is disabled
-	if !opts.FolderProcessing {
-		return []string{opts.Input}
-	}
-
-	return getLasFilesFromInputFolder(opts)
-}
-
-func getLasFilesFromInputFolder(opts *tiler.TilerOptions) []string {
-	var lasFiles = make([]string, 0)
-
-	baseInfo, _ := os.Stat(opts.Input)
-	err := filepath.Walk(
-		opts.Input,
-		func(path string, info os.FileInfo, err error) error {
-			if info.IsDir() && !opts.Recursive && !os.SameFile(info, baseInfo) {
-				return filepath.SkipDir
-			} else {
-				if strings.ToLower(filepath.Ext(info.Name())) == ".las" {
-					lasFiles = append(lasFiles, path)
-				}
-			}
-			return nil
-		},
-	)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return lasFiles
 }
 
 // Reads the given las file and preloads data in a list of Point

@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 func OpenFileOrFail(filePath string) *os.File {
@@ -16,11 +17,16 @@ func OpenFileOrFail(filePath string) *os.File {
 }
 
 func GetExecutablePath() string {
-	//Executable path
-	ex, err := os.Executable()
-	if err != nil {
-		log.Fatal("cannot retrieve executable directory", err)
-	}
+	_, b, _, _ := runtime.Caller(0)
+	return filepath.Dir(filepath.Dir(b))
+}
 
-	return filepath.Dir(ex)
+func CreateDirectoryIfDoesNotExist(directory string) error {
+	if _, err := os.Stat(directory); os.IsNotExist(err) {
+		err := os.MkdirAll(directory, 0777)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
