@@ -12,6 +12,6 @@ func NewOffsetElevationCorrector(offset float64) converters.ElevationCorrector {
 	}
 }
 
-func (offsetElevationCorrector *OffsetElevationCorrector) CorrectElevation(lon, lat, z float64) float64 {
-	return z + offsetElevationCorrector.Offset
+func (c *OffsetElevationCorrector) CorrectElevation(lon, lat, z float64) float64 {
+	return z + c.Offset
 }

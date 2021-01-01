@@ -1,10 +1,10 @@
-package gh_ellipsoid_to_geoid_z_converter
+package gh_offset_calculator
 
 import (
 	"bufio"
+	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"log"
 	"math"
-	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"os"
 	"path"
 	"strconv"

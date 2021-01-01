@@ -21,8 +21,8 @@ type INode interface {
 	GetChildren() [8]INode
 	GetPoints() []*data.Point
 	GetDepth() uint8
-	GetGlobalChildrenCount() int64
-	GetLocalChildrenCount() int32
+	TotalNumberOfPoints() int64
+	NumberOfPoints() int32
 	IsLeaf() bool
 	IsInitialized() bool
 	PrintStructure()

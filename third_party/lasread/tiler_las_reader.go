@@ -7,7 +7,6 @@ package lidario
 
 import (
 	"encoding/binary"
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
 	"io"
@@ -17,16 +16,12 @@ import (
 )
 
 type LasFileLoader struct {
-	CoordinateConverter converters.CoordinateConverter
-	ElevationConverter  converters.EllipsoidToGeoidZConverter
-	Tree                octree.ITree
+	Tree octree.ITree
 }
 
-func NewLasFileLoader(coordinateConverter converters.CoordinateConverter, elevationConverter converters.EllipsoidToGeoidZConverter, tree octree.ITree) *LasFileLoader {
+func NewLasFileLoader(tree octree.ITree) *LasFileLoader {
 	return &LasFileLoader{
-		CoordinateConverter: coordinateConverter,
-		ElevationConverter:  elevationConverter,
-		Tree:                tree,
+		Tree: tree,
 	}
 }
 
@@ -176,7 +171,7 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, las *LasFile) 
 					offset += 2
 					// las.rgbData[i] = rgb
 				}
-				lasFileLoader.Tree.AddPoint(&geometry.Coordinate{X: &X, Y: &Y, Z: &Z},R, G,B,Intensity,Classification,inSrid)
+				lasFileLoader.Tree.AddPoint(&geometry.Coordinate{X: &X, Y: &Y, Z: &Z}, R, G, B, Intensity, Classification, inSrid)
 				// las.pointDataOctElement[i] = elem
 			}
 		}(startingPoint, endingPoint)

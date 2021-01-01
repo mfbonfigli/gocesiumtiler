@@ -1,17 +1,17 @@
 package unit
 
 import (
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters/gh_ellipsoid_to_geoid_z_converter"
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters/proj4_coordinate_converter"
+	"github.com/mfbonfigli/gocesiumtiler/internal/converters/coordinate/proj4_coordinate_converter"
+	"github.com/mfbonfigli/gocesiumtiler/internal/converters/geoid_offset/gh_offset_calculator"
 	"math"
 	"testing"
 )
 
-var elevationConverter = gh_ellipsoid_to_geoid_z_converter.NewGHElevationConverter(proj4_coordinate_converter.NewProj4CoordinateConverter())
+var offsetCalculator = gh_offset_calculator.NewEllipsoidToGeoidGHOffsetCalculator(proj4_coordinate_converter.NewProj4CoordinateConverter())
 
 func TestGetEllipsoidToGeoidZOffsetFrom32633Correct(t *testing.T) {
 	expected := 48.95
-	output, err := elevationConverter.GetEllipsoidToGeoidZOffset(491880.85, 4576930.54, 32633)
+	output, err := offsetCalculator.GetEllipsoidToGeoidOffset(4576930.54, 491880.85, 32633)
 
 	if err != nil {
 		t.Errorf("Unexpected error occurred: %s", err.Error())
@@ -28,7 +28,7 @@ func TestGetEllipsoidToGeoidZOffsetFrom32633Correct(t *testing.T) {
 
 func TestGetEllipsoidToGeoidZOffsetFrom4326Correct(t *testing.T) {
 	expected := 48.95
-	output, err := elevationConverter.GetEllipsoidToGeoidZOffset(14.902954, 41.343825, 4326)
+	output, err := offsetCalculator.GetEllipsoidToGeoidOffset(41.343825, 14.902954, 4326)
 
 	if err != nil {
 		t.Errorf("Unexpected error occurred: %s", err.Error())

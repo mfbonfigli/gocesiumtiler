@@ -8,9 +8,8 @@ import (
 	"testing"
 )
 
-func TestBufferedElevationConverter(t *testing.T) {
-	var bufferedElevationConverter = geoid_offset.NewEllipsoidToGeoidBufferedCalculator(
-		360/(6371000*math.Pi*2),
+func TestSinglePointElevationConverter(t *testing.T) {
+	var bufferedElevationConverter = geoid_offset.NewEllipsoidToGeoidSinglePointCalculator(
 		gh_offset_calculator.NewEllipsoidToGeoidGHOffsetCalculator(proj4_coordinate_converter.NewProj4CoordinateConverter()),
 	)
 	expected := 48.95

@@ -1,7 +1,7 @@
 package unit
 
 import (
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters/proj4_coordinate_converter"
+	"github.com/mfbonfigli/gocesiumtiler/internal/converters/coordinate/proj4_coordinate_converter"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"math"
 	"testing"

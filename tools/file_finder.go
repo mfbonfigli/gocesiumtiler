@@ -8,27 +8,27 @@ import (
 	"strings"
 )
 
-type IFileFinder interface {
+type FileFinder interface {
 	GetLasFilesToProcess(opts *tiler.TilerOptions) []string
 }
 
-type FileFinder struct {}
+type StandardFileFinder struct {}
 
-func NewFileFinder() IFileFinder {
-	return &FileFinder{}
+func NewStandardFileFinder() FileFinder {
+	return &StandardFileFinder{}
 }
 
-func (fileFinder *FileFinder) GetLasFilesToProcess(opts *tiler.TilerOptions) []string {
+func (f *StandardFileFinder) GetLasFilesToProcess(opts *tiler.TilerOptions) []string {
 	// If folder processing is not enabled then las file is given by -input flag, otherwise look for las in -input folder
 	// eventually excluding nested folders if Recursive flag is disabled
 	if !opts.FolderProcessing {
 		return []string{opts.Input}
 	}
 
-	return fileFinder.getLasFilesFromInputFolder(opts)
+	return f.getLasFilesFromInputFolder(opts)
 }
 
-func (fileFinder *FileFinder) getLasFilesFromInputFolder(opts *tiler.TilerOptions) []string {
+func (f *StandardFileFinder) getLasFilesFromInputFolder(opts *tiler.TilerOptions) []string {
 	var lasFiles = make([]string, 0)
 
 	baseInfo, _ := os.Stat(opts.Input)

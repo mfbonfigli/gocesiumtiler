@@ -3,8 +3,7 @@ package unit
 import (
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters/proj4_coordinate_converter"
+	"github.com/mfbonfigli/gocesiumtiler/internal/converters/coordinate/proj4_coordinate_converter"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/io"
@@ -30,8 +29,7 @@ func TestConsumerSinglePointNoChildren(t *testing.T) {
 		globalChildrenCount: 2,
 		localChildrenCount:  1,
 		opts: &tiler.TilerOptions{
-			Srid:                4326,
-			CoordinateConverter: proj4_coordinate_converter.NewProj4CoordinateConverter(),
+			Srid: 4326,
 		},
 	}
 
@@ -55,7 +53,8 @@ func TestConsumerSinglePointNoChildren(t *testing.T) {
 	waitGroup.Add(1)
 
 	// start consumer
-	go io.Consume(workChannel, errorChannel, &waitGroup, node.opts.CoordinateConverter)
+	consumer := io.NewStandardConsumer(proj4_coordinate_converter.NewProj4CoordinateConverter())
+	go consumer.Consume(workChannel, errorChannel, &waitGroup)
 
 	// inject work unit in channel
 	workChannel <- &workUnit
@@ -213,7 +212,6 @@ func TestConsumerSinglePointNoChildren(t *testing.T) {
 	buffer = make([]byte, 1)
 	_, err = pntsFile.Read(buffer)
 	var red = buffer[0]
-	fmt.Print(red)
 	if red != 1 {
 		t.Errorf("Expected red: %d, got: %d", 1, red)
 	}
@@ -266,8 +264,7 @@ func TestConsumerOneChild(t *testing.T) {
 		globalChildrenCount: 2,
 		localChildrenCount:  1,
 		opts: &tiler.TilerOptions{
-			Srid:                4326,
-			CoordinateConverter: proj4_coordinate_converter.NewProj4CoordinateConverter(),
+			Srid: 4326,
 		},
 		children: [8]octree.INode{
 			&mockNode{
@@ -279,8 +276,7 @@ func TestConsumerOneChild(t *testing.T) {
 				globalChildrenCount: 1,
 				localChildrenCount:  1,
 				opts: &tiler.TilerOptions{
-					Srid:                4326,
-					CoordinateConverter: proj4_coordinate_converter.NewProj4CoordinateConverter(),
+					Srid: 4326,
 				},
 			},
 		},
@@ -306,7 +302,8 @@ func TestConsumerOneChild(t *testing.T) {
 	waitGroup.Add(1)
 
 	// start consumer
-	go io.Consume(workChannel, errorChannel, &waitGroup, node.opts.CoordinateConverter)
+	consumer := io.NewStandardConsumer(proj4_coordinate_converter.NewProj4CoordinateConverter())
+	go consumer.Consume(workChannel, errorChannel, &waitGroup)
 
 	// inject work unit in channel
 	workChannel <- &workUnit
@@ -491,7 +488,6 @@ func TestConsumerOneChild(t *testing.T) {
 	buffer = make([]byte, 1)
 	_, err = pntsFile.Read(buffer)
 	var red = buffer[0]
-	fmt.Print(red)
 	if red != 1 {
 		t.Errorf("Expected red: %d, got: %d", 1, red)
 	}

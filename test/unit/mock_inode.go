@@ -9,8 +9,7 @@ import (
 	"sync"
 )
 
-// Models a node of the octree, which can either be a leaf (a node without children nodes) or not. Each Node can contain
-// up to eight children OctNodes
+// mock implementation of the INode interface
 type mockNode struct {
 	parent              octree.INode
 	boundingBox         *geometry.BoundingBox
@@ -49,11 +48,11 @@ func (mockNode *mockNode) GetDepth() uint8 {
 	return mockNode.depth
 }
 
-func (mockNode *mockNode) GetGlobalChildrenCount() int64 {
+func (mockNode *mockNode) TotalNumberOfPoints() int64 {
 	return mockNode.globalChildrenCount
 }
 
-func (mockNode *mockNode) GetLocalChildrenCount() int32 {
+func (mockNode *mockNode) NumberOfPoints() int32 {
 	return mockNode.localChildrenCount
 }
 

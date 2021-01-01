@@ -24,10 +24,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mfbonfigli/gocesiumtiler/pkg"
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters/gh_ellipsoid_to_geoid_z_converter"
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters/proj4_coordinate_converter"
 	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
+	"github.com/mfbonfigli/gocesiumtiler/pkg"
+	"github.com/mfbonfigli/gocesiumtiler/pkg/algorithm_manager/std_algorithm_manager"
 	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"log"
 	"os"
@@ -79,10 +78,6 @@ func main() {
 		strategy = tiler.BoxedRandom
 	}
 
-	// default converter services
-	var coordinateConverterService = proj4_coordinate_converter.NewProj4CoordinateConverter()
-	var elevationConverterService = gh_ellipsoid_to_geoid_z_converter.NewGHElevationConverter(coordinateConverterService)
-
 	// Put args inside a TilerOptions struct
 	opts := tiler.TilerOptions{
 		Input:                  *flags.Input,
@@ -95,8 +90,6 @@ func main() {
 		Recursive:              *flags.RecursiveFolderProcessing,
 		Silent:                 *flags.Silent,
 		Strategy:               strategy,
-		CoordinateConverter:    coordinateConverterService,
-		ElevationConverter:     elevationConverterService,
 	}
 
 	// Validate TilerOptions
@@ -106,7 +99,8 @@ func main() {
 
 	// Starts the tiler
 	// defer timeTrack(time.Now(), "tiler")
-	err := pkg.NewTiler(tools.NewFileFinder(), pkg.NewAlgorithmManager()).RunTiler(&opts)
+	err := pkg.NewTiler(tools.NewStandardFileFinder(), std_algorithm_manager.NewAlgorithmManager(&opts)).RunTiler(&opts)
+
 	if err != nil {
 		log.Fatal("Error while tiling: ", err)
 	} else {

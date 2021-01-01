@@ -1,7 +1,6 @@
 package unit
 
 import (
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters/proj4_coordinate_converter"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/io"
@@ -14,8 +13,7 @@ import (
 
 func TestProducerInjectsWorkUnits(t *testing.T) {
 	var opts = tiler.TilerOptions{
-		Srid:                4326,
-		CoordinateConverter: proj4_coordinate_converter.NewProj4CoordinateConverter(),
+		Srid: 4326,
 	}
 
 	rootNode := &mockNode{
@@ -46,7 +44,8 @@ func TestProducerInjectsWorkUnits(t *testing.T) {
 	workChannel := make(chan *io.WorkUnit, 3)
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(1)
-	io.Produce("basepath", rootNode, &opts, workChannel, &waitGroup, "")
+	producer := io.NewStandardProducer("basepath", "", &opts)
+	producer.Produce(workChannel, &waitGroup, rootNode)
 	waitGroup.Wait() // if the test waits here indefinitely then producer is not deregistering itself from the waitgroup with waitGroup.Done()
 
 	if len(workChannel) != 2 {
@@ -78,7 +77,7 @@ func TestProducerInjectsWorkUnits(t *testing.T) {
 	select {
 	case <-workChannel:
 	default:
-		t.Error("Producer didn't close the WorkChannel was not closed")
+		t.Error("StandardProducer didn't close the WorkChannel was not closed")
 	}
 
 }
