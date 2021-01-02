@@ -15,7 +15,7 @@ type Loader interface {
 
 	// Initializes the structure to allow proper retrieval of points. Must be called after last element has been added but
 	// before first call to GetNext
-	Initialize()
+	InitializeLoader()
 
 	// Returns the bounding box extremes of the stored cloud minX, maxX, minY, maxY, minZ, maxZ
 	GetBounds() []float64

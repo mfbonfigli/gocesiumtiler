@@ -71,7 +71,7 @@ func (eb *RandomBoxLoader) GetNext() (*data.Point, bool) {
 }
 
 // Initializes the structure to allow proper retrieval of points. Shuffles the box order and points in each of the boxes.
-func (eb *RandomBoxLoader) Initialize() {
+func (eb *RandomBoxLoader) InitializeLoader() {
 	for i, b := range eb.Buckets {
 		var j = i
 		eb.Keys = append(eb.Keys, &j)

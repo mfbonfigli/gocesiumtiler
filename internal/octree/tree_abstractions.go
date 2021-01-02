@@ -16,6 +16,7 @@ type ITree interface {
 
 type INode interface {
 	AddDataPoint(element *data.Point)
+	GetInternalSrid() int
 	GetParent() INode
 	GetBoundingBox() *geometry.BoundingBox
 	GetChildren() [8]INode

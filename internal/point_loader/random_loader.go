@@ -46,7 +46,7 @@ func (eb *RandomLoader) GetNext() (*data.Point, bool) {
 	}
 }
 
-func (eb *RandomLoader) Initialize() {
+func (eb *RandomLoader) InitializeLoader() {
 	rand.Shuffle(len(eb.fullyRandomList), func(i, j int) { eb.fullyRandomList[i], eb.fullyRandomList[j] = eb.fullyRandomList[j], eb.fullyRandomList[i] })
 	eb.currentKeyIndex = -1
 }

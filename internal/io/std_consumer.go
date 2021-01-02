@@ -7,7 +7,6 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
-	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"io/ioutil"
 	"path"
@@ -92,7 +91,7 @@ func (c *StandardConsumer) writeBinaryPntsFile(workUnit WorkUnit) error {
 	}
 
 	pointNo := len(node.GetPoints())
-	intermediatePointData, err := c.generateIntermediateDataForPnts(node, pointNo, workUnit.Opts.Srid)
+	intermediatePointData, err := c.generateIntermediateDataForPnts(node, pointNo)
 	if err != nil {
 		return err
 	}
@@ -126,7 +125,7 @@ func (c *StandardConsumer) writeBinaryPntsFile(workUnit WorkUnit) error {
 	return nil
 }
 
-func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode, numPoints int, pointSrid int) (*intermediateData, error) {
+func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode, numPoints int) (*intermediateData, error) {
 	intermediateData := intermediateData{
 		coords:          make([]float64, numPoints*3),
 		colors:          make([]uint8, numPoints*3),
@@ -137,15 +136,15 @@ func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode, nu
 
 	// Decomposing tile data properties in separate sublists for coords, colors, intensities and classifications
 	for i := 0; i < len(node.GetPoints()); i++ {
-		element := node.GetPoints()[i]
+		point := node.GetPoints()[i]
 		srcCoord := geometry.Coordinate{
-			X: &element.X,
-			Y: &element.Y,
-			Z: &element.Z,
+			X: &point.X,
+			Y: &point.Y,
+			Z: &point.Z,
 		}
 
 		// ConvertCoordinateSrid coords according to cesium CRS
-		outCrd, err := c.coordinateConverter.ConvertToWGS84Cartesian(srcCoord, pointSrid)
+		outCrd, err := c.coordinateConverter.ConvertToWGS84Cartesian(srcCoord, node.GetInternalSrid())
 		if err != nil {
 			return nil, err
 		}
@@ -154,12 +153,12 @@ func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode, nu
 		intermediateData.coords[i*3+1] = *outCrd.Y
 		intermediateData.coords[i*3+2] = *outCrd.Z
 
-		intermediateData.colors[i*3] = element.R
-		intermediateData.colors[i*3+1] = element.G
-		intermediateData.colors[i*3+2] = element.B
+		intermediateData.colors[i*3] = point.R
+		intermediateData.colors[i*3+1] = point.G
+		intermediateData.colors[i*3+2] = point.B
 
-		intermediateData.intensities[i] = element.Intensity
-		intermediateData.classifications[i] = element.Classification
+		intermediateData.intensities[i] = point.Intensity
+		intermediateData.classifications[i] = point.Classification
 	}
 
 	return &intermediateData, nil
@@ -263,7 +262,7 @@ func (c *StandardConsumer) writeTilesetJsonFile(workUnit WorkUnit) error {
 
 	// tileset.json file
 	file := path.Join(parentFolder, "tileset.json")
-	jsonData, err := c.generateTilesetJson(node, workUnit.Opts)
+	jsonData, err := c.generateTilesetJson(node)
 	if err != nil {
 		return err
 	}
@@ -277,10 +276,10 @@ func (c *StandardConsumer) writeTilesetJsonFile(workUnit WorkUnit) error {
 	return nil
 }
 
-// Generates the tileset.json content for the given octnode and tileroptions
-func (c *StandardConsumer) generateTilesetJson(node octree.INode, opts *tiler.TilerOptions) ([]byte, error) {
+// Generates the tileset.json content for the given octnode
+func (c *StandardConsumer) generateTilesetJson(node octree.INode) ([]byte, error) {
 	if !node.IsLeaf() || node.GetParent() == nil {
-		root, err := c.generateTilesetRoot(node, opts)
+		root, err := c.generateTilesetRoot(node)
 		if err != nil {
 			return nil, err
 		}
@@ -299,14 +298,14 @@ func (c *StandardConsumer) generateTilesetJson(node octree.INode, opts *tiler.Ti
 	return nil, errors.New("this node is a leaf, cannot create a tileset json for it")
 }
 
-func (c *StandardConsumer) generateTilesetRoot(node octree.INode, opts *tiler.TilerOptions) (*Root, error) {
-	reg, err := c.coordinateConverter.Convert2DBoundingboxToWGS84Region(node.GetBoundingBox(), opts.Srid)
+func (c *StandardConsumer) generateTilesetRoot(node octree.INode) (*Root, error) {
+	reg, err := c.coordinateConverter.Convert2DBoundingboxToWGS84Region(node.GetBoundingBox(), node.GetInternalSrid())
 
 	if err != nil {
 		return nil, err
 	}
 
-	children, err := c.generateTilesetChildren(node, opts)
+	children, err := c.generateTilesetChildren(node)
 	if err != nil {
 		return nil, err
 	}
@@ -331,11 +330,11 @@ func (c *StandardConsumer) generateTileset(node octree.INode, root *Root) *Tiles
 	return &tileset
 }
 
-func (c *StandardConsumer) generateTilesetChildren(node octree.INode, opts *tiler.TilerOptions) ([]Child, error) {
+func (c *StandardConsumer) generateTilesetChildren(node octree.INode) ([]Child, error) {
 	children := []Child{}
 	for i, child := range node.GetChildren() {
 		if c.nodeContainsPoints(child) {
-			childJson, err := c.generateTilesetChild(child, opts, i)
+			childJson, err := c.generateTilesetChild(child, i)
 			if err != nil {
 				return nil, err
 			}
@@ -349,7 +348,7 @@ func (c *StandardConsumer) nodeContainsPoints(node octree.INode) bool {
 	return node != nil && node.TotalNumberOfPoints() > 0
 }
 
-func (c *StandardConsumer) generateTilesetChild(child octree.INode, opts *tiler.TilerOptions, childIndex int) (*Child, error) {
+func (c *StandardConsumer) generateTilesetChild(child octree.INode, childIndex int) (*Child, error) {
 	childJson := Child{}
 	filename := "tileset.json"
 	if child.IsLeaf() {
@@ -358,7 +357,7 @@ func (c *StandardConsumer) generateTilesetChild(child octree.INode, opts *tiler.
 	childJson.Content = Content{
 		Url: strconv.Itoa(childIndex) + "/" + filename,
 	}
-	reg, err := c.coordinateConverter.Convert2DBoundingboxToWGS84Region(child.GetBoundingBox(), opts.Srid)
+	reg, err := c.coordinateConverter.Convert2DBoundingboxToWGS84Region(child.GetBoundingBox(), child.GetInternalSrid())
 	if err != nil {
 		return nil, err
 	}

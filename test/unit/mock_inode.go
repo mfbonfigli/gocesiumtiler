@@ -15,13 +15,14 @@ type mockNode struct {
 	boundingBox         *geometry.BoundingBox
 	children            [8]octree.INode
 	points              []*data.Point
+	internalSrid        int
 	depth               uint8
 	globalChildrenCount int64
 	localChildrenCount  int32
 	opts                *tiler.TilerOptions
 	leaf                bool
 	initialized         bool
-	geometricError		float64
+	geometricError      float64
 	sync.RWMutex
 }
 
@@ -42,6 +43,10 @@ func (mockNode *mockNode) GetChildren() [8]octree.INode {
 
 func (mockNode *mockNode) GetPoints() []*data.Point {
 	return mockNode.points
+}
+
+func (mockNode *mockNode) GetInternalSrid() int {
+	return mockNode.internalSrid
 }
 
 func (mockNode *mockNode) GetDepth() uint8 {

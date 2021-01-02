@@ -64,62 +64,76 @@ func NewBoxedRandomTree(opts *tiler.TilerOptions, coordinateConverter converters
 
 // Internally update the bounds of the tree.
 // TODO: These could be read directly from the LAS file
-func (octTree *octTree) recomputeBoundsFromElement(element *data.Point) {
-	octTree.minX = math.Min(float64(element.X), octTree.minX)
-	octTree.minY = math.Min(float64(element.Y), octTree.minY)
-	octTree.minZ = math.Min(float64(element.Z), octTree.minZ)
-	octTree.maxX = math.Max(float64(element.X), octTree.maxX)
-	octTree.maxY = math.Max(float64(element.Y), octTree.maxY)
-	octTree.maxZ = math.Max(float64(element.Z), octTree.maxZ)
+func (tree *octTree) recomputeBoundsFromElement(element *data.Point) {
+	tree.minX = math.Min(float64(element.X), tree.minX)
+	tree.minY = math.Min(float64(element.Y), tree.minY)
+	tree.minZ = math.Min(float64(element.Z), tree.minZ)
+	tree.maxX = math.Max(float64(element.X), tree.maxX)
+	tree.maxY = math.Max(float64(element.Y), tree.maxY)
+	tree.maxZ = math.Max(float64(element.Z), tree.maxZ)
 }
 
 // Builds the hierarchical tree structure propagating the added items according to the TilerOptions provided
 // during initialization
-func (octTree *octTree) Build() error {
-	if octTree.built {
+func (tree *octTree) Build() error {
+	if tree.built {
 		return errors.New("octree already built")
 	}
-	box := octTree.GetBounds()
-	octNode := NewOctNode(geometry.NewBoundingBox(box[0], box[1], box[2], box[3], box[4], box[5]), octTree.opts, 1, nil)
-	octTree.rootNode = octNode
-	octTree.Initialize()
+
+	tree.init()
+
 	var wg sync.WaitGroup
-	//wg.Add(len(octTree.itemsToAdd))
-	N := runtime.NumCPU()
-	for i := 0; i < N; i++ {
-		wg.Add(1)
-		go func(loader point_loader.Loader) {
-			for {
-				val, shouldContinue := loader.GetNext()
-				if val != nil {
-					octTree.rootNode.AddDataPoint(val)
-				}
-				if !shouldContinue {
-					break
-				}
-			}
-			wg.Done()
-		}(octTree.Loader)
-	}
+	tree.launchParallelPointLoaders(&wg)
 	wg.Wait()
-	octTree.itemsToAdd = nil
-	octTree.built = true
+
+	tree.itemsToAdd = nil
+	tree.built = true
+
 	return nil
 }
 
-// Prints the tree structure
-func (octTree *octTree) PrintStructure() {
-	if octTree.built {
-		octTree.rootNode.PrintStructure()
+func (tree *octTree) init() {
+	box := tree.GetBounds()
+	octNode := NewOctNode(geometry.NewBoundingBox(box[0], box[1], box[2], box[3], box[4], box[5]), tree.opts, 1, nil)
+	tree.rootNode = octNode
+	tree.InitializeLoader()
+}
+
+func (tree *octTree) launchParallelPointLoaders(waitGroup *sync.WaitGroup) {
+	N := runtime.NumCPU()
+
+	for i := 0; i < N; i++ {
+		waitGroup.Add(1)
+		go tree.launchPointLoader(waitGroup)
 	}
 }
 
-func (octTree *octTree) GetRootNode() octree.INode {
-	return octTree.rootNode
+func (tree *octTree) launchPointLoader(waitGroup *sync.WaitGroup) {
+	for {
+		val, shouldContinue := tree.Loader.GetNext()
+		if val != nil {
+			tree.rootNode.AddDataPoint(val)
+		}
+		if !shouldContinue {
+			break
+		}
+	}
+	waitGroup.Done()
 }
 
-func (octTree *octTree) IsBuilt() bool {
-	return octTree.built
+// Prints the tree structure
+func (tree *octTree) PrintStructure() {
+	if tree.built {
+		tree.rootNode.PrintStructure()
+	}
+}
+
+func (tree *octTree) GetRootNode() octree.INode {
+	return tree.rootNode
+}
+
+func (tree *octTree) IsBuilt() bool {
+	return tree.built
 }
 
 func (tree *octTree) AddPoint(coordinate *geometry.Coordinate, r uint8, g uint8, b uint8, intensity uint8, classification uint8, srid int) {

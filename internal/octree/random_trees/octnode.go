@@ -21,10 +21,11 @@ type octNode struct {
 	boundingBox         *geometry.BoundingBox
 	children            [8]octree.INode
 	points              []*data.Point
+	internalSrid        int
 	depth               uint8
 	totalNumberOfPoints int64
 	numberOfPoints      int32
-	opts                *tiler.TilerOptions
+	tilerOptions        *tiler.TilerOptions
 	leaf                bool
 	initialized         bool
 	sync.RWMutex
@@ -36,7 +37,8 @@ func NewOctNode(boundingBox *geometry.BoundingBox, opts *tiler.TilerOptions, dep
 		parent:              parent,
 		boundingBox:         boundingBox,
 		depth:               depth,
-		opts:                opts,
+		internalSrid:        4326,
+		tilerOptions:        opts,
 		totalNumberOfPoints: 0,
 		numberOfPoints:      0,
 		leaf:                true,
@@ -52,13 +54,13 @@ func (node *octNode) AddDataPoint(element *data.Point) {
 		node.Lock()
 		for i := uint8(0); i < 8; i++ {
 			if node.children[i] == nil {
-				node.children[i] = NewOctNode(getOctantBoundingBox(&i, node.boundingBox), node.opts, node.depth+1, node)
+				node.children[i] = NewOctNode(getOctantBoundingBox(&i, node.boundingBox), node.tilerOptions, node.depth+1, node)
 			}
 		}
 		node.initialized = true
 		node.Unlock()
 	}
-	if atomic.LoadInt32(&node.numberOfPoints) < node.opts.MaxNumPointsPerNode {
+	if atomic.LoadInt32(&node.numberOfPoints) < node.tilerOptions.MaxNumPointsPerNode {
 		node.Lock()
 		node.points = append(node.points, element)
 		atomic.AddInt32(&node.numberOfPoints, 1)
@@ -76,6 +78,10 @@ func (node *octNode) AddDataPoint(element *data.Point) {
 
 func (node *octNode) GetParent() octree.INode {
 	return node.parent
+}
+
+func (node *octNode) GetInternalSrid() int {
+	return node.internalSrid
 }
 
 func (node *octNode) GetBoundingBox() *geometry.BoundingBox {
@@ -150,7 +156,7 @@ func (node *octNode) ComputeGeometricError() float64 {
 }
 
 func (node *octNode) estimateErrorAsBoundingBoxDiagonal() float64 {
-	region, _ := proj4_coordinate_converter.NewProj4CoordinateConverter().Convert2DBoundingboxToWGS84Region(node.GetBoundingBox(), node.opts.Srid)
+	region, _ := proj4_coordinate_converter.NewProj4CoordinateConverter().Convert2DBoundingboxToWGS84Region(node.GetBoundingBox(), node.GetInternalSrid())
 	var latA = region[1]
 	var latB = region[3]
 	var lngA = region[0]
@@ -176,6 +182,7 @@ func (node *octNode) estimateErrorAsDensityDifference() float64 {
 
 	return densityWithOnlyThisTile - densityWithAllPoints
 }
+
 // Checks if the bounding box contains the given element
 func canBoundingBoxContainElement(e *data.Point, bbox *geometry.BoundingBox) bool {
 	return (e.X >= bbox.Xmin && e.X <= bbox.Xmax) &&

@@ -30,7 +30,7 @@ func (p *StandardProducer) Produce(work chan *WorkUnit, wg *sync.WaitGroup, node
 
 // Parses an octnode and submits WorkUnits the the provided workchannel.
 func (p *StandardProducer) produce(basePath string, node octree.INode, work chan *WorkUnit, wg *sync.WaitGroup) {
-	// if node contains children (it should always be the case), then submit work
+	// if node contains points (it should always be the case), then submit work
 	if node.NumberOfPoints() > 0 {
 		work <- &WorkUnit{
 			OctNode:  node,

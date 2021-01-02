@@ -104,7 +104,6 @@ func readLas(file string, opts *tiler.TilerOptions, tree octree.ITree) error {
 	if err != nil {
 		return err
 	}
-	opts.Srid = 4326
 	defer func() { _ = lf.Close() }()
 	return nil
 }
