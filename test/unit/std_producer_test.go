@@ -53,7 +53,7 @@ func TestProducerInjectsWorkUnits(t *testing.T) {
 	}
 
 	rootWorkUnit := <-workChannel
-	if rootWorkUnit.OctNode != rootNode {
+	if rootWorkUnit.Node != rootNode {
 		t.Errorf("Missing root node in workchannel")
 	}
 	if rootWorkUnit.BasePath != "basepath" {
@@ -64,7 +64,7 @@ func TestProducerInjectsWorkUnits(t *testing.T) {
 	}
 
 	childWorkUnit := <-workChannel
-	if childWorkUnit.OctNode != rootNode.children[0] {
+	if childWorkUnit.Node != rootNode.children[0] {
 		t.Errorf("Missing child node in workchannel")
 	}
 	if childWorkUnit.BasePath != path.Join("basepath", "0") {

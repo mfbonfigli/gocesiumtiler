@@ -2,6 +2,7 @@ package unit
 
 import "C"
 import (
+	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
@@ -26,15 +27,20 @@ type mockNode struct {
 	sync.RWMutex
 }
 
-// Adds a Point to the octNode eventually propagating it to the octNode relevant children
 func (mockNode *mockNode) AddDataPoint(element *data.Point) {}
 
-func (mockNode *mockNode) GetParent() octree.INode {
-	return mockNode.parent
+func (mockNode *mockNode) IsRoot() bool {
+	return mockNode.parent == nil
 }
 
-func (mockNode *mockNode) GetBoundingBox() *geometry.BoundingBox {
-	return mockNode.boundingBox
+func (mockNode *mockNode) GetBoundingBoxRegion(converter converters.CoordinateConverter) ([]float64, error) {
+	reg, err := converter.Convert2DBoundingboxToWGS84Region(mockNode.boundingBox, mockNode.GetInternalSrid())
+
+	if err != nil {
+		return nil, err
+	}
+
+	return reg, nil
 }
 
 func (mockNode *mockNode) GetChildren() [8]octree.INode {
@@ -68,9 +74,6 @@ func (mockNode *mockNode) IsLeaf() bool {
 func (mockNode *mockNode) IsInitialized() bool {
 	return mockNode.initialized
 }
-
-// Prints the summary of the node contents in the console
-func (mockNode *mockNode) PrintStructure() {}
 
 func (mockNode *mockNode) ComputeGeometricError() float64 {
 	return mockNode.geometricError

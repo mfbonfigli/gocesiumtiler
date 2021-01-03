@@ -1,6 +1,8 @@
 package tools
 
-import "flag"
+import (
+	"flag"
+)
 
 type Flags struct {
 	Input                     *string
@@ -13,7 +15,9 @@ type Flags struct {
 	RecursiveFolderProcessing *bool
 	Silent                    *bool
 	LogTimestamp              *bool
-	Hq                        *bool
+	Algorithm                 *string
+	GridCellMaxSize           *float64
+	GridCellMinSize           *float64
 	Help                      *bool
 	Version                   *bool
 }
@@ -23,13 +27,15 @@ func ParseFlags() Flags {
 	output := defineStringFlag("output", "o", "", "Specifies the output folder where to write the tileset data.")
 	srid := defineIntFlag("srid", "e", 4326, "EPSG srid code of input points.")
 	zOffset := defineFloat64Flag("zoffset", "z", 0, "Vertical offset to apply to points, in meters.")
-	maxNumPts := defineIntFlag("maxpts", "m", 50000, "Max number of points per tile. ")
+	maxNumPts := defineIntFlag("maxpts", "m", 50000, "Max number of points per tile for the Random and RandomBox algorithms.")
 	zGeoidCorrection := defineBoolFlag("geoid", "g", false, "Enables Geoid to Ellipsoid elevation correction. Use this flag if your input LAS files have Z coordinates specified relative to the Earth geoid rather than to the standard ellipsoid.")
 	folderProcessing := defineBoolFlag("folder", "f", false, "Enables processing of all las files from input folder. Input must be a folder if specified")
 	recursiveFolderProcessing := defineBoolFlag("recursive", "r", false, "Enables recursive lookup for all .las files inside the subfolders")
 	silent := defineBoolFlag("silent", "s", false, "Use to suppress all the non-error messages.")
 	logTimestamp := defineBoolFlag("timestamp", "t", false, "Adds timestamp to log messages.")
-	hq := defineBoolFlag("hq", "hq", false, "Enables a higher quality random pick algorithm.")
+	algorithm := defineStringFlag("algorithm", "a", "grid", "Sets the algorithm to use. Must be one of Grid,Random,RandomBox. Grid algorithm is highly suggested, others are deprecated and will be removed in future versions.")
+	gridCellMaxSize := defineFloat64Flag("grid-max-size", "x", 5.0, "Max cell size in meters for the grid algorithm. It roughly represents the max spacing between any two samples. ")
+	gridCellMinSize := defineFloat64Flag("grid-min-size", "n", 0.15, "Min cell size in meters for the grid algorithm. It roughly represents the minimum possible size of a 3d tile. ")
 	help := defineBoolFlag("help", "h", false, "Displays this help.")
 	version := defineBoolFlag("version", "v", false, "Displays the version of gocesiumtiler.")
 
@@ -46,7 +52,9 @@ func ParseFlags() Flags {
 		RecursiveFolderProcessing: recursiveFolderProcessing,
 		Silent:                    silent,
 		LogTimestamp:              logTimestamp,
-		Hq:                        hq,
+		Algorithm:                 algorithm,
+		GridCellMaxSize:           gridCellMaxSize,
+		GridCellMinSize:           gridCellMinSize,
 		Help:                      help,
 		Version:                   version,
 	}

@@ -30,6 +30,7 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -72,12 +73,6 @@ func main() {
 		tools.DisableLoggerTimestamp()
 	}
 
-	// eventually set HQ strategy
-	strategy := tiler.FullyRandom
-	if *flags.Hq {
-		strategy = tiler.BoxedRandom
-	}
-
 	// Put args inside a TilerOptions struct
 	opts := tiler.TilerOptions{
 		Input:                  *flags.Input,
@@ -89,7 +84,9 @@ func main() {
 		FolderProcessing:       *flags.FolderProcessing,
 		Recursive:              *flags.RecursiveFolderProcessing,
 		Silent:                 *flags.Silent,
-		Strategy:               strategy,
+		Algorithm:              tiler.Algorithm(strings.ToUpper(*flags.Algorithm)),
+		CellMinSize:            *flags.GridCellMinSize,
+		CellMaxSize:            *flags.GridCellMaxSize,
 	}
 
 	// Validate TilerOptions
@@ -117,6 +114,11 @@ func validateOptions(opts *tiler.TilerOptions) (string, bool) {
 	if _, err := os.Stat(opts.Output); os.IsNotExist(err) {
 		return "Output folder not found", false
 	}
+
+	if opts.CellMinSize > opts.CellMaxSize {
+		return "grid-max-size parameter cannot be lower than grid-min-size parameter", false
+	}
+
 	return "", true
 }
 

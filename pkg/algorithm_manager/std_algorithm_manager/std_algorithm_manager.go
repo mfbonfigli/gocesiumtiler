@@ -8,6 +8,7 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters/elevation/pipeline_elevation_corrector"
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters/geoid_offset/gh_offset_calculator"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
+	"github.com/mfbonfigli/gocesiumtiler/internal/octree/grid_tree"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree/random_trees"
 	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 	"github.com/mfbonfigli/gocesiumtiler/pkg/algorithm_manager"
@@ -36,23 +37,21 @@ func NewAlgorithmManager(opts *tiler.TilerOptions) algorithm_manager.AlgorithmMa
 	return algorithmManager
 }
 
-func (algorithmManager *StandardAlgorithmManager) GetElevationCorrectionAlgorithm() converters.ElevationCorrector {
-	return algorithmManager.elevationCorrector
+func (am *StandardAlgorithmManager) GetElevationCorrectionAlgorithm() converters.ElevationCorrector {
+	return am.elevationCorrector
 }
 
-func (algorithmManager *StandardAlgorithmManager) GetTreeAlgorithm() octree.ITree {
-	return algorithmManager.treeStructure
+func (am *StandardAlgorithmManager) GetTreeAlgorithm() octree.ITree {
+	return am.treeStructure
 }
 
-func (algorithmManager *StandardAlgorithmManager) GetCoordinateConverterAlgorithm() converters.CoordinateConverter {
-	return algorithmManager.coordinateConverter
+func (am *StandardAlgorithmManager) GetCoordinateConverterAlgorithm() converters.CoordinateConverter {
+	return am.coordinateConverter
 }
 
 func evaluateElevationCorrectionAlgorithm(options *tiler.TilerOptions, ellipsoidToGeoidOffsetCalculator converters.EllipsoidToGeoidOffsetCalculator, converter converters.CoordinateConverter) converters.ElevationCorrector {
 	var elevationCorrectors []converters.ElevationCorrector
-	{
-		offset_elevation_corrector.NewOffsetElevationCorrector(options.ZOffset)
-	}
+	elevationCorrectors = append(elevationCorrectors, offset_elevation_corrector.NewOffsetElevationCorrector(options.ZOffset))
 
 	if options.EnableGeoidZCorrection {
 		elevationCorrectors = append(elevationCorrectors, geoid_elevation_corrector.NewGeoidElevationCorrector(options.Srid, ellipsoidToGeoidOffsetCalculator))
@@ -62,10 +61,12 @@ func evaluateElevationCorrectionAlgorithm(options *tiler.TilerOptions, ellipsoid
 }
 
 func evaluateTreeAlgorithm(options *tiler.TilerOptions, converter converters.CoordinateConverter, elevationCorrection converters.ElevationCorrector) octree.ITree {
-	switch options.Strategy {
-	case tiler.BoxedRandom:
+	switch options.Algorithm {
+	case tiler.Grid:
+		return grid_tree.NewGridTree(converter, elevationCorrection, options.CellMaxSize, options.CellMinSize)
+	case tiler.RandomBox:
 		return random_trees.NewBoxedRandomTree(options, converter, elevationCorrection)
-	case tiler.FullyRandom:
+	case tiler.Random:
 		return random_trees.NewRandomTree(options, converter, elevationCorrection)
 	}
 

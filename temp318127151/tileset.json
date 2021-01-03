@@ -1,0 +1,24 @@
+{
+	"asset": {
+		"version": "1.0"
+	},
+	"geometricError": 0,
+	"root": {
+		"children": [],
+		"content": {
+			"uri": "content.pnts"
+		},
+		"boundingVolume": {
+			"region": [
+				0.2408469662404639,
+				0.7388088889592584,
+				0.2408469662404639,
+				0.7388088889592584,
+				0,
+				1
+			]
+		},
+		"geometricError": 0,
+		"refine": "ADD"
+	}
+}

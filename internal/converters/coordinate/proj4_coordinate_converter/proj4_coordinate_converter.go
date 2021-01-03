@@ -121,6 +121,10 @@ func (proj4CoordinateConverter *proj4CoordinateConverter) Convert2DBoundingboxTo
 
 // Converts the input coordinate from the given srid to EPSG:4326 srid
 func (proj4CoordinateConverter *proj4CoordinateConverter) ConvertToWGS84Cartesian(coord geometry.Coordinate, sourceSrid int) (geometry.Coordinate, error) {
+	if sourceSrid == 4978 {
+		return coord, nil
+	}
+
 	res, err := proj4CoordinateConverter.ConvertCoordinateSrid(sourceSrid, 4326, coord)
 	if err != nil {
 		return coord, err

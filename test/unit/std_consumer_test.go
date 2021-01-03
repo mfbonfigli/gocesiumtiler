@@ -40,7 +40,7 @@ func TestConsumerSinglePointNoChildrenEPSG4326(t *testing.T) {
 
 	// generate a mock workunit
 	workUnit := io.WorkUnit{
-		OctNode:  node,
+		Node:     node,
 		Opts:     node.opts,
 		BasePath: tempdir,
 	}
@@ -276,7 +276,7 @@ func TestConsumerSinglePointNoChildrenEPSG32633(t *testing.T) {
 
 	// generate a mock workunit
 	workUnit := io.WorkUnit{
-		OctNode:  node,
+		Node:     node,
 		Opts:     node.opts,
 		BasePath: tempdir,
 	}
@@ -527,7 +527,7 @@ func TestConsumerOneChild(t *testing.T) {
 
 	// generate a mock workunit
 	workUnit := io.WorkUnit{
-		OctNode:  node,
+		Node:     node,
 		Opts:     node.opts,
 		BasePath: tempdir,
 	}

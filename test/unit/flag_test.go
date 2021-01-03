@@ -286,23 +286,63 @@ func TestLogTimestampFlagDefaultIsFalse(t *testing.T) {
 	}
 }
 
-func TestHqFlagIsParsed(t *testing.T) {
-	expected := true
-	os.Args = []string{"gocesiumtiler", "-hq"}
+func TestAlgorithmFlagIsParsed(t *testing.T) {
+	expected := "random"
+	os.Args = []string{"gocesiumtiler", "-algorithm=random"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flags := tools.ParseFlags()
-	if !*flags.Hq {
-		t.Errorf("Expected Hq = %t, got %t", expected, *flags.Hq)
+	if *flags.Algorithm != expected {
+		t.Errorf("Expected Algorithm = %s, got %s", expected, *flags.Algorithm)
 	}
 }
 
-func TestHqDefaultIsFalse(t *testing.T) {
-	expected := false
+func TestAlgorithmDefaultIsGrid(t *testing.T) {
+	expected := "grid"
 	os.Args = []string{"gocesiumtiler"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flags := tools.ParseFlags()
-	if *flags.Hq {
-		t.Errorf("Expected Hq = %t, got %t", expected, *flags.Hq)
+	if *flags.Algorithm != "grid" {
+		t.Errorf("Expected Algorithm = %s, got %s", expected, *flags.Algorithm)
+	}
+}
+
+func TestGridMaxSizeFlagIsParsed(t *testing.T) {
+	expected := 2.35
+	os.Args = []string{"gocesiumtiler", "-grid-max-size=2.35"}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flags := tools.ParseFlags()
+	if *flags.GridCellMaxSize != expected {
+		t.Errorf("Expected Algorithm = %f, got %f", expected, *flags.GridCellMaxSize)
+	}
+}
+
+func TestGridMaxSizeFlagDefaultIs5m(t *testing.T) {
+	expected := 5.0
+	os.Args = []string{"gocesiumtiler"}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flags := tools.ParseFlags()
+	if *flags.GridCellMaxSize != expected {
+		t.Errorf("Expected Algorithm = %f, got %f", expected, *flags.GridCellMaxSize)
+	}
+}
+
+func TestGridMinSizeFlagIsParsed(t *testing.T) {
+	expected := 0.04
+	os.Args = []string{"gocesiumtiler", "-grid-min-size=0.04"}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flags := tools.ParseFlags()
+	if *flags.GridCellMinSize != expected {
+		t.Errorf("Expected Algorithm = %f, got %f", expected, *flags.GridCellMinSize)
+	}
+}
+
+func TestGridMinSizeFlagDefaultIs15cm(t *testing.T) {
+	expected := 0.15
+	os.Args = []string{"gocesiumtiler"}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flags := tools.ParseFlags()
+	if *flags.GridCellMinSize != expected {
+		t.Errorf("Expected Algorithm = %f, got %f", expected, *flags.GridCellMinSize)
 	}
 }
 

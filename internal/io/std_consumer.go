@@ -25,7 +25,6 @@ func NewStandardConsumer(coordinateConverter converters.CoordinateConverter) *St
 	}
 }
 
-
 // struct used to store data in an intermediate format
 type intermediateData struct {
 	coords          []float64
@@ -69,7 +68,7 @@ func (c *StandardConsumer) doWork(workUnit *WorkUnit) error {
 	if err != nil {
 		return err
 	}
-	if !workUnit.OctNode.IsLeaf() || workUnit.OctNode.GetParent() == nil {
+	if !workUnit.Node.IsLeaf() || workUnit.Node.IsRoot() {
 		// if the node has children also writes the tileset.json file
 		err := c.writeTilesetJsonFile(*workUnit)
 		if err != nil {
@@ -82,7 +81,7 @@ func (c *StandardConsumer) doWork(workUnit *WorkUnit) error {
 // Writes a content.pnts binary files from the given WorkUnit
 func (c *StandardConsumer) writeBinaryPntsFile(workUnit WorkUnit) error {
 	parentFolder := workUnit.BasePath
-	node := workUnit.OctNode
+	node := workUnit.Node
 
 	// Create base folder if it does not exist
 	err := tools.CreateDirectoryIfDoesNotExist(parentFolder)
@@ -137,6 +136,9 @@ func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode, nu
 	// Decomposing tile data properties in separate sublists for coords, colors, intensities and classifications
 	for i := 0; i < len(node.GetPoints()); i++ {
 		point := node.GetPoints()[i]
+		if point == nil {
+			fmt.Println("a")
+		}
 		srcCoord := geometry.Coordinate{
 			X: &point.X,
 			Y: &point.Y,
@@ -252,7 +254,7 @@ func (c *StandardConsumer) generateBatchTableJsonContent(pointNumber, spaceNumbe
 // Writes the tileset.json file for the given WorkUnit
 func (c *StandardConsumer) writeTilesetJsonFile(workUnit WorkUnit) error {
 	parentFolder := workUnit.BasePath
-	node := workUnit.OctNode
+	node := workUnit.Node
 
 	// Create base folder if it does not exist
 	err := tools.CreateDirectoryIfDoesNotExist(parentFolder)
@@ -276,9 +278,9 @@ func (c *StandardConsumer) writeTilesetJsonFile(workUnit WorkUnit) error {
 	return nil
 }
 
-// Generates the tileset.json content for the given octnode
+// Generates the tileset.json content for the given tree node
 func (c *StandardConsumer) generateTilesetJson(node octree.INode) ([]byte, error) {
-	if !node.IsLeaf() || node.GetParent() == nil {
+	if !node.IsLeaf() || node.IsRoot() {
 		root, err := c.generateTilesetRoot(node)
 		if err != nil {
 			return nil, err
@@ -299,7 +301,7 @@ func (c *StandardConsumer) generateTilesetJson(node octree.INode) ([]byte, error
 }
 
 func (c *StandardConsumer) generateTilesetRoot(node octree.INode) (*Root, error) {
-	reg, err := c.coordinateConverter.Convert2DBoundingboxToWGS84Region(node.GetBoundingBox(), node.GetInternalSrid())
+	reg, err := node.GetBoundingBoxRegion(c.coordinateConverter)
 
 	if err != nil {
 		return nil, err
@@ -357,7 +359,7 @@ func (c *StandardConsumer) generateTilesetChild(child octree.INode, childIndex i
 	childJson.Content = Content{
 		Url: strconv.Itoa(childIndex) + "/" + filename,
 	}
-	reg, err := c.coordinateConverter.Convert2DBoundingboxToWGS84Region(child.GetBoundingBox(), child.GetInternalSrid())
+	reg, err := child.GetBoundingBoxRegion(c.coordinateConverter)
 	if err != nil {
 		return nil, err
 	}
