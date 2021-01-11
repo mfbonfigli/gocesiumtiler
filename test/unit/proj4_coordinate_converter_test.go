@@ -176,10 +176,12 @@ func TestConvert326322DBoundingboxToWGS84Region(t *testing.T) {
 	zMinExpected := 0.0
 	zMaxExpected := 10.0
 
-	output, err := coordinateConverter.Convert2DBoundingboxToWGS84Region(
+	boundingBoxOutput, err := coordinateConverter.Convert2DBoundingboxToWGS84Region(
 		bbox,
 		32632,
 	)
+
+	output := boundingBoxOutput.GetAsArray()
 
 	if err != nil {
 		t.Errorf("Unexpected error occurred: %s", err.Error())

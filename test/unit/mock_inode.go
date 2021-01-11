@@ -33,7 +33,7 @@ func (mockNode *mockNode) IsRoot() bool {
 	return mockNode.parent == nil
 }
 
-func (mockNode *mockNode) GetBoundingBoxRegion(converter converters.CoordinateConverter) ([]float64, error) {
+func (mockNode *mockNode) GetBoundingBoxRegion(converter converters.CoordinateConverter) (*geometry.BoundingBox, error) {
 	reg, err := converter.Convert2DBoundingboxToWGS84Region(mockNode.boundingBox, mockNode.GetInternalSrid())
 
 	if err != nil {

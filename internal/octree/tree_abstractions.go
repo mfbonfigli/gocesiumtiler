@@ -18,7 +18,7 @@ type INode interface {
 	AddDataPoint(element *data.Point)
 	GetInternalSrid() int
 	IsRoot() bool
-	GetBoundingBoxRegion(converter converters.CoordinateConverter) ([]float64, error)
+	GetBoundingBoxRegion(converter converters.CoordinateConverter) (*geometry.BoundingBox, error)
 	GetChildren() [8]INode
 	GetPoints() []*data.Point
 	TotalNumberOfPoints() int64

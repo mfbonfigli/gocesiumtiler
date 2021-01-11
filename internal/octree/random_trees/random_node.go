@@ -81,7 +81,7 @@ func (n *RandomNode) GetInternalSrid() int {
 	return n.internalSrid
 }
 
-func (n *RandomNode) GetBoundingBoxRegion(converter converters.CoordinateConverter) ([]float64, error) {
+func (n *RandomNode) GetBoundingBoxRegion(converter converters.CoordinateConverter) (*geometry.BoundingBox, error) {
 	reg, err := converter.Convert2DBoundingboxToWGS84Region(n.boundingBox, n.GetInternalSrid())
 
 	if err != nil {
@@ -149,7 +149,8 @@ func (n *RandomNode) ComputeGeometricError() float64 {
 }
 
 func (n *RandomNode) estimateErrorAsBoundingBoxDiagonal() float64 {
-	region, _ := proj4_coordinate_converter.NewProj4CoordinateConverter().Convert2DBoundingboxToWGS84Region(n.boundingBox, n.GetInternalSrid())
+	regionBox, _ := proj4_coordinate_converter.NewProj4CoordinateConverter().Convert2DBoundingboxToWGS84Region(n.boundingBox, n.GetInternalSrid())
+	region := regionBox.GetAsArray()
 	var latA = region[1]
 	var latB = region[3]
 	var lngA = region[0]

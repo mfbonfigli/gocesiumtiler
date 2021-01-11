@@ -58,15 +58,19 @@ func NewBoundingBoxFromParent(parent *BoundingBox, octant *uint8) *BoundingBox {
 }
 
 // Returns the approximate volume of the given bounding box, assuming that it is storing EPSG:4326 coordinates and Z in meters
-func (bbox *BoundingBox) GetWGS84Volume() float64 {
-	b := bbox.distance(bbox.Xmin, bbox.Xmax, bbox.Ymin, bbox.Ymin, 0, 0)
-	h := bbox.distance(bbox.Xmin, bbox.Xmin, bbox.Ymin, bbox.Ymax, 0, 0)
-	e := bbox.Zmax - bbox.Zmin
-	return b * h * e
-	//return (bbox.Xmax - bbox.Xmin) * (bbox.Ymax - bbox.Ymin) * (bbox.Zmax - bbox.Zmin)
+func (b *BoundingBox) GetWGS84Volume() float64 {
+	w := b.distance(b.Xmin, b.Xmax, b.Ymin, b.Ymin, 0, 0)
+	h := b.distance(b.Xmin, b.Xmin, b.Ymin, b.Ymax, 0, 0)
+	e := b.Zmax - b.Zmin
+	return w * h * e
+	//return (b.Xmax - b.Xmin) * (b.Ymax - b.Ymin) * (b.Zmax - b.Zmin)
 }
 
-func (bbox *BoundingBox) distance(lat1, lat2, lon1, lon2, el1, el2 float64) float64 {
+func (b *BoundingBox) GetAsArray() []float64 {
+	return []float64{b.Xmin, b.Xmax, b.Ymin, b.Ymax, b.Zmin, b.Zmax}
+}
+
+func (b *BoundingBox) distance(lat1, lat2, lon1, lon2, el1, el2 float64) float64 {
 	R := 6378137 / 1000; // Radius of the earth
 	latDistance := (lat2 - lat1) * toRadians
 	lonDistance := (lon2 - lon1) * toRadians

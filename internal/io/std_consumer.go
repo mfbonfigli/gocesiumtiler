@@ -314,7 +314,7 @@ func (c *StandardConsumer) generateTilesetRoot(node octree.INode) (*Root, error)
 
 	root := Root{
 		Content:        Content{"content.pnts"},
-		BoundingVolume: BoundingVolume{reg},
+		BoundingVolume: BoundingVolume{reg.GetAsArray()},
 		GeometricError: node.ComputeGeometricError(),
 		Refine:         "ADD",
 		Children:       children,
@@ -333,7 +333,7 @@ func (c *StandardConsumer) generateTileset(node octree.INode, root *Root) *Tiles
 }
 
 func (c *StandardConsumer) generateTilesetChildren(node octree.INode) ([]Child, error) {
-	children := []Child{}
+	var children []Child
 	for i, child := range node.GetChildren() {
 		if c.nodeContainsPoints(child) {
 			childJson, err := c.generateTilesetChild(child, i)
@@ -364,7 +364,7 @@ func (c *StandardConsumer) generateTilesetChild(child octree.INode, childIndex i
 		return nil, err
 	}
 	childJson.BoundingVolume = BoundingVolume{
-		Region: reg,
+		Region: reg.GetAsArray(),
 	}
 	childJson.GeometricError = child.ComputeGeometricError()
 	childJson.Refine = "ADD"

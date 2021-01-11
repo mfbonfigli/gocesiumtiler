@@ -73,17 +73,17 @@ func parseEPSGProjectionDatabaseRecord(databaseRecord string) (int, *epsgProject
 }
 
 // Converts the given coordinate from the given source Srid to the given target srid.
-func (proj4CoordinateConverter *proj4CoordinateConverter) ConvertCoordinateSrid(sourceSrid int, targetSrid int, coord geometry.Coordinate) (geometry.Coordinate, error) {
+func (cc *proj4CoordinateConverter) ConvertCoordinateSrid(sourceSrid int, targetSrid int, coord geometry.Coordinate) (geometry.Coordinate, error) {
 	if sourceSrid == targetSrid {
 		return coord, nil
 	}
 
-	src, err := proj4CoordinateConverter.initProjection(sourceSrid)
+	src, err := cc.initProjection(sourceSrid)
 	if err != nil {
 		return coord, err
 	}
 
-	dst, err := proj4CoordinateConverter.initProjection(targetSrid)
+	dst, err := cc.initProjection(targetSrid)
 	if err != nil {
 		return coord, err
 	}
@@ -95,7 +95,7 @@ func (proj4CoordinateConverter *proj4CoordinateConverter) ConvertCoordinateSrid(
 
 // Converts the generic bounding box bounds values from the given input srid to a EPSG:4326 srid (in radians)
 // and returns a float64 array containing xMin, yMin, xMax, yMax, zMin, zMax. Z values are left unchanged
-func (proj4CoordinateConverter *proj4CoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int) ([]float64, error) {
+func (cc *proj4CoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int) (*geometry.BoundingBox, error) {
 	z := float64(0)
 	projLowCorn := geometry.Coordinate{
 		X: &bbox.Xmin,
@@ -107,35 +107,35 @@ func (proj4CoordinateConverter *proj4CoordinateConverter) Convert2DBoundingboxTo
 		Y: &bbox.Ymax,
 		Z: &z,
 	}
-	w84lc, err := proj4CoordinateConverter.ConvertCoordinateSrid(srid, 4326, projLowCorn)
+	w84lc, err := cc.ConvertCoordinateSrid(srid, 4326, projLowCorn)
 	if err != nil {
 		return nil, nil
 	}
-	w84uc, err := proj4CoordinateConverter.ConvertCoordinateSrid(srid, 4326, projUppCorn)
+	w84uc, err := cc.ConvertCoordinateSrid(srid, 4326, projUppCorn)
 	if err != nil {
 		return nil, nil
 	}
 
-	return []float64{*w84lc.X * toRadians, *w84lc.Y * toRadians, *w84uc.X * toRadians, *w84uc.Y * toRadians, bbox.Zmin, bbox.Zmax}, nil
+	return geometry.NewBoundingBox(*w84lc.X * toRadians, *w84lc.Y * toRadians, *w84uc.X * toRadians, *w84uc.Y * toRadians, bbox.Zmin, bbox.Zmax), nil
 }
 
 // Converts the input coordinate from the given srid to EPSG:4326 srid
-func (proj4CoordinateConverter *proj4CoordinateConverter) ConvertToWGS84Cartesian(coord geometry.Coordinate, sourceSrid int) (geometry.Coordinate, error) {
+func (cc *proj4CoordinateConverter) ConvertToWGS84Cartesian(coord geometry.Coordinate, sourceSrid int) (geometry.Coordinate, error) {
 	if sourceSrid == 4978 {
 		return coord, nil
 	}
 
-	res, err := proj4CoordinateConverter.ConvertCoordinateSrid(sourceSrid, 4326, coord)
+	res, err := cc.ConvertCoordinateSrid(sourceSrid, 4326, coord)
 	if err != nil {
 		return coord, err
 	}
-	res2, err := proj4CoordinateConverter.ConvertCoordinateSrid(4329, 4978, res)
+	res2, err := cc.ConvertCoordinateSrid(4329, 4978, res)
 	return res2, err
 }
 
 // Releases all projection objects from memory
-func (proj4CoordinateConverter *proj4CoordinateConverter) Cleanup() {
-	for _, val := range proj4CoordinateConverter.EpsgDatabase {
+func (cc *proj4CoordinateConverter) Cleanup() {
+	for _, val := range cc.EpsgDatabase {
 		if val.Projection != nil {
 			val.Projection.Close()
 		}
@@ -201,8 +201,8 @@ func getCoordinateFromRadiansToSridFormat(coord float64, srid *proj.Proj) *float
 }
 
 // Returns the projection corresponding to the given EPSG code, storing it in the relevant EpsgDatabase entry for caching
-func (proj4CoordinateConverter *proj4CoordinateConverter) initProjection(code int) (*proj.Proj, error) {
-	val, ok := proj4CoordinateConverter.EpsgDatabase[code]
+func (cc *proj4CoordinateConverter) initProjection(code int) (*proj.Proj, error) {
+	val, ok := cc.EpsgDatabase[code]
 	if !ok {
 		return &proj.Proj{}, errors.New("epsg code not found")
 	} else if val.Projection == nil {

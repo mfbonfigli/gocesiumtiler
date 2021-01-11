@@ -12,8 +12,8 @@ func (m *mockCoordinateConverter) ConvertCoordinateSrid(sourceSrid int, targetSr
 	return coord, nil
 }
 
-func (m *mockCoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int) ([]float64, error) {
-	return []float64{0, 1, 0, 1, 0, 1}, nil
+func (m *mockCoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int) (*geometry.BoundingBox, error) {
+	return bbox, nil
 }
 
 func (m *mockCoordinateConverter) ConvertToWGS84Cartesian(coord geometry.Coordinate, sourceSrid int) (geometry.Coordinate, error) {
@@ -97,6 +97,48 @@ func TestTreeBuildSuccess(t *testing.T) {
 
 	if len(tree.GetRootNode().GetPoints()) != 1 {
 		t.Errorf("Tree root node does not contain exactly one node but %d instead", len(tree.GetRootNode().GetPoints()))
+	}
+}
+
+func TestGetRootNode(t *testing.T) {
+	tree := grid_tree.NewGridTree(
+		&mockCoordinateConverter{},
+		&mockElevationCorrector{},
+		5.0,
+		0.1,
+	)
+
+	x := 14.0
+	y := 41.0
+	z := 3.0
+	r := uint8(4)
+	g := uint8(5)
+	b := uint8(6)
+	i := uint8(7)
+	c := uint8(8)
+
+	coord := &geometry.Coordinate{
+		X: &x,
+		Y: &y,
+		Z: &z,
+	}
+
+	tree.AddPoint(coord, r, g, b, i, c, 4326)
+
+	err := tree.Build()
+
+	if err != nil {
+		t.Errorf("Unexpected error occurred while building the tree: %s", err)
+	}
+
+	node := tree.GetRootNode()
+
+	if node == nil {
+		t.Errorf("Nil root node returned")
+	}
+
+	if len(node.GetPoints()) != 1 {
+		t.Errorf("Root Node has wrong number of points")
 	}
 }
 

@@ -52,7 +52,7 @@ func (tree *GridTree) Build() error {
 	tree.launchParallelPointLoaders(&wg)
 	wg.Wait()
 
-	tree.rootNode.(*GridNode).buildPoints()
+	tree.rootNode.(*GridNode).BuildPoints()
 	tree.built = true
 
 	return nil
