@@ -30,11 +30,12 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
 
-const VERSION = "1.0.3"
+const VERSION = "1.1.0"
 
 const logo = `
                            _                 _   _ _
@@ -43,7 +44,7 @@ const logo = `
 | (_| | (_) | (_|  __/\__ \ | |_| | | | | | | |_| | |  __/ |   
  \__, |\___/ \___\___||___/_|\__,_|_| |_| |_|\__|_|_|\___|_|   
   __| | A Cesium Point Cloud tile generator written in golang
- |___/  Copyright 2019 - Massimo Federico Bonfigli    
+ |___/  Copyright YYYY - Massimo Federico Bonfigli    
 `
 
 func main() {
@@ -128,7 +129,7 @@ func timeTrack(start time.Time, name string) {
 }
 
 func printLogo() {
-	fmt.Println(logo)
+	fmt.Println(strings.ReplaceAll(logo, "YYYY", strconv.Itoa(time.Now().Year())))
 }
 
 func showHelp() {

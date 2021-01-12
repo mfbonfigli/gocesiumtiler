@@ -32,6 +32,9 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 
 
 ## Changelog
+##### Version 1.1.0 
+* Added a new tiling algorithm that should greatly improve the output quality.
+
 ##### Version 1.0.3 
 * Added shorthand versions of input flags and a new intro logo. Also a major code refactoring has happened behind the scenes. 
 
@@ -66,8 +69,9 @@ To launch the tests use the command `go test ./test/... -v`.
 
 To run just execute the binary tool with the appropriate flags.
 
-It is suggested to try use the `-hq` flag as in most scenarios it does not slow down too much the tiling
-process but it produces tiles that have better quality. One should experiment to decide whether it is worth using or not.
+There are various algorithms selectable. It is highly suggested to use the newer "grid" algorithm, which is the default one.
+Other possible choices are "random" and "randombox", which however are deprecated even though they might turn out to be slightly
+faster in common scenarios.
 
 To show help run:
 ```
@@ -77,57 +81,94 @@ gocesiumtiler -help
 ### Flags
 
 ```
-  -e <int>          EPSG srid code of input points. (shorthand for srid) (default 4326)
-  -f                Enables processing of all las files from input folder. Input must be a folder if specified (shorthand for folder)
-  -folder           Enables processing of all las files from input folder. Input must be a folder if specified
-  -g                Enables Geoid to Ellipsoid elevation correction. Use this flag if your input LAS files have Z coordinates specified relative to the Earth geoid rather than to the standard ellipsoid. (shorthand for geoid)
-  -geoid            Enables Geoid to Ellipsoid elevation correction. Use this flag if your input LAS files have Z coordinates specified relative to the Earth geoid rather than to the standard ellipsoid.
-  -h                Displays this help. (shorthand for help)
-  -help             Displays this help.
-  -hq               Enables a higher quality random pick algorithm.
-  -i <path>         Specifies the input las file/folder. (shorthand for input)
-  -input <path>     Specifies the input las file/folder.
-  -m <int>          Max number of points per tile.  (shorthand for maxpts) (default 50000)
-  -maxpts <int>     Max number of points per tile.  (default 50000)
-  -o <path>         Specifies the output folder where to write the tileset data. (shorthand for output)
-  -output <path>    Specifies the output folder where to write the tileset data.
-  -r                Enables recursive lookup for all .las files inside the subfolders (shorthand for recursive)
-  -recursive        Enables recursive lookup for all .las files inside the subfolders
-  -s                Use to suppress all the non-error messages. (shorthand for silent)
-  -silent           Use to suppress all the non-error messages.
-  -srid <int>       EPSG srid code of input points. (default 4326)
-  -t                Adds timestamp to log messages. (shorthand for timestamp)
-  -timestamp        Adds timestamp to log messages.
-  -v                Displays the version of gocesiumtiler. (shorthand for version)
-  -version          Displays the version of gocesiumtiler.
-  -z <float>        Vertical offset to apply to points, in meters. (shorthand for zoffset)
-  -zoffset <float>  Vertical offset to apply to points, in meters.
+  -a string             Sets the algorithm to use. Must be one of Grid,Random,RandomBox. Grid algorithm is highly suggested, others are deprecated and will be removed in future versions. (shorthand for algorithm) (default "grid")
+  -algorithm string     Sets the algorithm to use. Must be one of Grid,Random,RandomBox. Grid algorithm is highly suggested, others are deprecated and will be removed in future versions. (default "grid")
+  -e int                EPSG srid code of input points. (shorthand for srid) (default 4326)
+  -f                    Enables processing of all las files from input folder. Input must be a folder if specified (shorthand for folder)
+  -folder               Enables processing of all las files from input folder. Input must be a folder if specified
+  -g                    Enables Geoid to Ellipsoid elevation correction. Use this flag if your input LAS files have Z coordinates specified relative to the Earth geoid rather than to the standard ellipsoid. (shorthand for geoid)
+  -geoid                Enables Geoid to Ellipsoid elevation correction. Use this flag if your input LAS files have Z coordinates specified relative to the Earth geoid rather than to the standard ellipsoid.
+  -grid-max-size float  Max cell size in meters for the grid algorithm. It roughly represents the max spacing between any two samples.  (default 5)
+  -grid-min-size float  Min cell size in meters for the grid algorithm. It roughly represents the minimum possible size of a 3d tile.  (default 0.15)
+  -h                    Displays this help. (shorthand for help)
+  -help                 Displays this help.
+  -i string             Specifies the input las file/folder. (shorthand for input)
+  -input string         Specifies the input las file/folder.
+  -m int                Max number of points per tile for the Random and RandomBox algorithms. (shorthand for maxpts) (default 50000)
+  -maxpts int           Max number of points per tile for the Random and RandomBox algorithms. (default 50000)
+  -n float              Min cell size in meters for the grid algorithm. It roughly represents the minimum possible size of a 3d tile.  (shorthand for grid-min-size) (default 0.15)
+  -o string             Specifies the output folder where to write the tileset data. (shorthand for output)
+  -output string        Specifies the output folder where to write the tileset data.
+  -r                    Enables recursive lookup for all .las files inside the subfolders (shorthand for recursive)
+  -recursive            Enables recursive lookup for all .las files inside the subfolders
+  -s                    Use to suppress all the non-error messages. (shorthand for silent)
+  -silent               Use to suppress all the non-error messages.
+  -srid int             EPSG srid code of input points. (default 4326)
+  -t                    Adds timestamp to log messages. (shorthand for timestamp)
+  -timestamp            Adds timestamp to log messages.
+  -v                    Displays the version of gocesiumtiler. (shorthand for version)
+  -version              Displays the version of gocesiumtiler.
+  -x float              Max cell size in meters for the grid algorithm. It roughly represents the max spacing between any two samples.  (shorthand for grid-max-size) (default 5)
+  -z float              Vertical offset to apply to points, in meters. (shorthand for zoffset)
+  -zoffset float        Vertical offset to apply to points, in meters.
+
 ```
+
+Note: the "hq" flag present in versions <= 1.0.3 has been removed and replaced by the "randombox" setting for the `-algorithm` flag.
+
 
 ### Usage examples:
 
 Recursively convert all LAS files in folder `C:\las`, write output tilesets in folder `C:\out`, assume LAS input coordinates expressed 
-in EPSG:32633, convert elevation from above the geoid to above the ellipsoid and use higher quality sampling algorithm:
+in EPSG:32633, convert elevation from above the geoid to above the ellipsoid and use the default grid sampling algorithm:
 
 ```
-gocesiumtiler -input=C:\las -output=C:\out -srid=32633 -geoid -folder -recursive -hq
+gocesiumtiler -input=C:\las -output=C:\out -srid=32633 -geoid -folder -recursive 
 ```
 or, using the shorthand notation:
 ```
-gocesiumtiler -i C:\las -o C:\out -e 32633 -g -f -r -hq
+gocesiumtiler -i C:\las -o C:\out -e 32633 -g -f -r
 ```
 
 Recursively convert all LAS files in `C:\las\file.las`, write output tileset in folder `C:\out`, assume input coordinates
-expressed in EPSG:4326, apply an offset of 10 meters to elevation of points and allow to store up to 100000 points per tile:
+expressed in EPSG:4326, apply an offset of 10 meters to elevation of points and allow to store up to 100000 points per tile
+using the "randombox" algorithm:
 
 ```
-gocesiumtiler -input=C:\las\file.las -output=C:\out -zoffset=10 -maxpts=100000
+gocesiumtiler -input=C:\las\file.las -output=C:\out -zoffset=10 -maxpts=100000 -algorithm=randombox
 ```
 or, using the shorthand notation:
 
 ```
-gocesiumtiler -i C:\las\file.las -o C:\out -z 10 -m 100000
+gocesiumtiler -i C:\las\file.las -o C:\out -z 10 -m 100000 -a randombox
 ```
+
+### Algorithms
+As of now all the algorithms provided in the tool divide the space in an octree (i.e. a partition  of 8 octants recursively subdivided in octants as well).
+Every octant contains points plus 8 children, which are octants as well. These children octants might contain points and octants as well,
+in a recursive fashion.
+
+The difference between the algorithms is tied to how they choose the points to store in each level of the octree.
+
+- **Grid algorithm**
+This algorithm samples the space in a grid structure. For a `grid-max-size=5m` it stores one point every 5x5x5m box in the space,
+the closest one to the cell center. All the other points (the ones not closest to the 5x5x5 3D grid intersections) are sent to the
+children levels, where the grid halves in size, and the process is repeated until either the points are all stored or the grid size has 
+reached the `grid-min-size` setting. `grid-max-size` setting should be set accordingly to the input cloud size. A value that is too small
+might result in very dense tiles at higher LODs, a value that is too big might result in very few points stored ad higher LODs and 
+a highly nested tree structure.
+
+- **Random algorithm** 
+This algorithm simply shuffles all the points in the point cloud and picks at random up to `maxpts` points for each octree node.
+Shuffling allows to uniformely represent the overall shape of the point cloud, however this might imply that some details
+are not adequately represented at higher distances (lower Level of Details). 
+
+- **RandomBox algorithm** 
+This algorithm is very similar to the Random algorithm but with one difference. Points are divided into bins of a definite, small, size
+and the bins are randomly shuffled. Then the points are picked one by one from each bin. This ensures that points are randomly 
+distributed but also that all areas of space, even the ones with fewer points, are equally likely to be represented at higher level of details. 
+
+
 ## Precompiled Binaries
 Along with the source code a prebuilt binary for Windows x64 is provided for each release of the tool in the github page.
 Binaries for other systems at the moment are not provided.
@@ -135,8 +176,10 @@ Binaries for other systems at the moment are not provided.
 ## Future work and support
 
 Further work needs to be done, such as: 
-- Completing the unit test coverage. The work on this has started but it is at the early stages. It is priority no. 1 before adding new features.
-- Adding a grid sampling algorithm. This would significantly improve the quality output as opposed to a random sampling algorithm, probably at the expense of processing speed.
+- Improving the test coverage and creating a test pipeline.
+- Adding an automatic setting to estabilish `grid-max-size` and `grid-min-size` values for the grid algorithm based on 
+the input point cloud parameters.
+- Adding support for non-metric units for elevations.
 - Integration with the [Draco](https://github.com/google/draco) compression library
 - Upgrading of the Proj4 library to versions newer than 4.9.2
 - Optimizations to reduce the memory footprint so to process bigger LAS files
