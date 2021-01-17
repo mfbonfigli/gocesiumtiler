@@ -24,17 +24,19 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mfbonfigli/gocesiumtiler/app"
-	"github.com/mfbonfigli/gocesiumtiler/converters/gh_ellipsoid_to_geoid_z_converter"
-	"github.com/mfbonfigli/gocesiumtiler/converters/proj4_coordinate_converter"
-	"github.com/mfbonfigli/gocesiumtiler/structs/tiler"
-	"github.com/mfbonfigli/gocesiumtiler/utils"
+	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
+	"github.com/mfbonfigli/gocesiumtiler/pkg"
+	"github.com/mfbonfigli/gocesiumtiler/pkg/algorithm_manager/std_algorithm_manager"
+	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
+	// "github.com/pkg/profile" // enable for profiling
 )
 
-const VERSION = "1.0.3"
+const VERSION = "1.1.0"
 
 const logo = `
                            _                 _   _ _
@@ -43,14 +45,15 @@ const logo = `
 | (_| | (_) | (_|  __/\__ \ | |_| | | | | | | |_| | |  __/ |   
  \__, |\___/ \___\___||___/_|\__,_|_| |_| |_|\__|_|_|\___|_|   
   __| | A Cesium Point Cloud tile generator written in golang
- |___/  Copyright 2019 - Massimo Federico Bonfigli    
+ |___/  Copyright YYYY - Massimo Federico Bonfigli    
 `
 
 func main() {
-	//defer profile.Start(profile.CPUProfile).Stop()
+	// remove comment to enable the profiler (remember to remove comment in the imports)
+	// defer profile.Start(profile.MemProfileRate(1)).Stop()
 
 	// Retrieve command line args
-	flags := utils.ParseFlags()
+	flags := tools.ParseFlags()
 
 	// Prints the command line flag description
 	if *flags.Help {
@@ -65,23 +68,13 @@ func main() {
 
 	// set logging and timestamp logging
 	if *flags.Silent {
-		utils.DisableLogger()
+		tools.DisableLogger()
 	} else {
 		printLogo()
 	}
 	if !*flags.LogTimestamp {
-		utils.DisableLoggerTimestamp()
+		tools.DisableLoggerTimestamp()
 	}
-
-	// eventually set HQ strategy
-	strategy := tiler.FullyRandom
-	if *flags.Hq {
-		strategy = tiler.BoxedRandom
-	}
-
-	// default converter services
-	var coordinateConverterService = proj4_coordinate_converter.NewProj4CoordinateConverter()
-	var elevationConverterService = gh_ellipsoid_to_geoid_z_converter.NewGHElevationConverter(coordinateConverterService)
 
 	// Put args inside a TilerOptions struct
 	opts := tiler.TilerOptions{
@@ -94,9 +87,9 @@ func main() {
 		FolderProcessing:       *flags.FolderProcessing,
 		Recursive:              *flags.RecursiveFolderProcessing,
 		Silent:                 *flags.Silent,
-		Strategy:               strategy,
-		CoordinateConverter:    coordinateConverterService,
-		ElevationConverter:     elevationConverterService,
+		Algorithm:              tiler.Algorithm(strings.ToUpper(*flags.Algorithm)),
+		CellMinSize:            *flags.GridCellMinSize,
+		CellMaxSize:            *flags.GridCellMaxSize,
 	}
 
 	// Validate TilerOptions
@@ -106,11 +99,12 @@ func main() {
 
 	// Starts the tiler
 	// defer timeTrack(time.Now(), "tiler")
-	err := app.RunTiler(&opts)
+	err := pkg.NewTiler(tools.NewStandardFileFinder(), std_algorithm_manager.NewAlgorithmManager(&opts)).RunTiler(&opts)
+
 	if err != nil {
 		log.Fatal("Error while tiling: ", err)
 	} else {
-		utils.LogOutput("Conversion Completed")
+		tools.LogOutput("Conversion Completed")
 	}
 }
 
@@ -123,16 +117,21 @@ func validateOptions(opts *tiler.TilerOptions) (string, bool) {
 	if _, err := os.Stat(opts.Output); os.IsNotExist(err) {
 		return "Output folder not found", false
 	}
+
+	if opts.CellMinSize > opts.CellMaxSize {
+		return "grid-max-size parameter cannot be lower than grid-min-size parameter", false
+	}
+
 	return "", true
 }
 
 func timeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
-	utils.LogOutput(fmt.Sprintf("%s took %s", name, elapsed))
+	tools.LogOutput(fmt.Sprintf("%s took %s", name, elapsed))
 }
 
 func printLogo() {
-	fmt.Println(logo)
+	fmt.Println(strings.ReplaceAll(logo, "YYYY", strconv.Itoa(time.Now().Year())))
 }
 
 func showHelp() {
