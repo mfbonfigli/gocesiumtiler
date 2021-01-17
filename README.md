@@ -1,5 +1,5 @@
 # Go Cesium Point Cloud Tiler
-
+![Build Status](https://codebuild.eu-west-1.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoibSt1bmxTSGZTNHlLaS81d3ZEM3EyQXZIUXh4U0g4VjdtZUIwaUNMeEswaU5nc3A4YzZQQ2JiQ1pJbkFaVWxrcmF0TEFnRkM5WFFIbTVKQmtYSkVBTy9vPSIsIml2UGFyYW1ldGVyU3BlYyI6IjZjZ1NodXJzczJ0MlJja2UiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
 ```
                                              _   _ _
   __ _  ___   ___ ___  ___(_)_   _ _ __ ___ | |_(_) | ___ _ __
