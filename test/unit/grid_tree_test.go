@@ -40,9 +40,9 @@ func TestTreeAddPointSuccess(t *testing.T) {
 	c := uint8(8)
 
 	coord := &geometry.Coordinate{
-		X: &x,
-		Y: &y,
-		Z: &z,
+		X: x,
+		Y: y,
+		Z: z,
 	}
 
 	tree.AddPoint(coord, r, g, b, i, c, 4326)
@@ -78,9 +78,9 @@ func TestTreeBuildSuccess(t *testing.T) {
 	c := uint8(8)
 
 	coord := &geometry.Coordinate{
-		X: &x,
-		Y: &y,
-		Z: &z,
+		X: x,
+		Y: y,
+		Z: z,
 	}
 
 	tree.AddPoint(coord, r, g, b, i, c, 4326)
@@ -118,9 +118,9 @@ func TestGetRootNode(t *testing.T) {
 	c := uint8(8)
 
 	coord := &geometry.Coordinate{
-		X: &x,
-		Y: &y,
-		Z: &z,
+		X: x,
+		Y: y,
+		Z: z,
 	}
 
 	tree.AddPoint(coord, r, g, b, i, c, 4326)

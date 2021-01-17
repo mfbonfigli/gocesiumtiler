@@ -98,14 +98,14 @@ func (cc *proj4CoordinateConverter) ConvertCoordinateSrid(sourceSrid int, target
 func (cc *proj4CoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int) (*geometry.BoundingBox, error) {
 	z := float64(0)
 	projLowCorn := geometry.Coordinate{
-		X: &bbox.Xmin,
-		Y: &bbox.Ymin,
-		Z: &z,
+		X: bbox.Xmin,
+		Y: bbox.Ymin,
+		Z: z,
 	}
 	projUppCorn := geometry.Coordinate{
-		X: &bbox.Xmax,
-		Y: &bbox.Ymax,
-		Z: &z,
+		X: bbox.Xmax,
+		Y: bbox.Ymax,
+		Z: z,
 	}
 	w84lc, err := cc.ConvertCoordinateSrid(srid, 4326, projLowCorn)
 	if err != nil {
@@ -116,7 +116,7 @@ func (cc *proj4CoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geom
 		return nil, nil
 	}
 
-	return geometry.NewBoundingBox(*w84lc.X * toRadians, *w84lc.Y * toRadians, *w84uc.X * toRadians, *w84uc.Y * toRadians, bbox.Zmin, bbox.Zmax), nil
+	return geometry.NewBoundingBox(w84lc.X * toRadians, w84lc.Y * toRadians, w84uc.X * toRadians, w84uc.Y * toRadians, bbox.Zmin, bbox.Zmax), nil
 }
 
 // Converts the input coordinate from the given srid to EPSG:4326 srid
@@ -160,11 +160,11 @@ func executeConversion(coord *geometry.Coordinate, sourceProj *proj.Proj, destin
 func getCoordinateArraysForConversion(coord *geometry.Coordinate, srid *proj.Proj) ([]float64, []float64, []float64) {
 	var x, y, z []float64
 
-	x = []float64{*getCoordinateInRadiansFromSridFormat(*coord.X, srid)}
-	y = []float64{*getCoordinateInRadiansFromSridFormat(*coord.Y, srid)}
+	x = []float64{*getCoordinateInRadiansFromSridFormat(coord.X, srid)}
+	y = []float64{*getCoordinateInRadiansFromSridFormat(coord.Y, srid)}
 
-	if coord.Z != nil {
-		z = []float64{*coord.Z}
+	if coord.Z != math.NaN() {
+		z = []float64{coord.Z}
 	}
 
 	return x, y, z
@@ -181,23 +181,23 @@ func getCoordinateInRadiansFromSridFormat(coord float64, srid *proj.Proj) *float
 	return &radians
 }
 
-func extractZPointerIfPresent(zContainer []float64) *float64 {
+func extractZPointerIfPresent(zContainer []float64) float64 {
 	if zContainer != nil {
-		return &zContainer[0]
+		return zContainer[0]
 	}
 
-	return nil
+	return math.NaN()
 }
 
 // Returns the input coordinate expressed in the given srid converting it into radians if necessary
-func getCoordinateFromRadiansToSridFormat(coord float64, srid *proj.Proj) *float64 {
+func getCoordinateFromRadiansToSridFormat(coord float64, srid *proj.Proj) float64 {
 	var angle = coord
 
 	if srid.IsLatLong() {
 		angle = coord * toDeg
 	}
 
-	return &angle
+	return angle
 }
 
 // Returns the projection corresponding to the given EPSG code, storing it in the relevant EpsgDatabase entry for caching

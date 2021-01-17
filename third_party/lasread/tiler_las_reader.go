@@ -171,7 +171,7 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, las *LasFile) 
 					offset += 2
 					// las.rgbData[i] = rgb
 				}
-				lasFileLoader.Tree.AddPoint(&geometry.Coordinate{X: &X, Y: &Y, Z: &Z}, R, G, B, Intensity, Classification, inSrid)
+				lasFileLoader.Tree.AddPoint(&geometry.Coordinate{X: X, Y: Y, Z: Z}, R, G, B, Intensity, Classification, inSrid)
 				// las.pointDataOctElement[i] = elem
 			}
 		}(startingPoint, endingPoint)

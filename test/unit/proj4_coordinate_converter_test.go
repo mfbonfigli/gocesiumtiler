@@ -33,9 +33,9 @@ func TestConvertsCoordinate(t *testing.T) {
 			data.inEpsgCode,
 			data.outEpsgCode,
 			geometry.Coordinate{
-				X: &data.X,
-				Y: &data.Y,
-				Z: &data.Z,
+				X: data.X,
+				Y: data.Y,
+				Z: data.Z,
 			},
 		)
 
@@ -43,30 +43,30 @@ func TestConvertsCoordinate(t *testing.T) {
 			t.Errorf("Unexpected error occurred: %s", err.Error())
 		}
 
-		if math.Abs(*output.X-data.xExpected) > data.toleranceXY {
+		if math.Abs(output.X-data.xExpected) > data.toleranceXY {
 			t.Errorf(
 				"Expected X within %.8f ± %.8f, got X:%.8f",
 				data.xExpected,
 				data.toleranceXY,
-				*output.X,
+				output.X,
 			)
 		}
 
-		if math.Abs(*output.Y-data.yExpected) > data.toleranceXY {
+		if math.Abs(output.Y-data.yExpected) > data.toleranceXY {
 			t.Errorf(
 				"Expected Y within %.8f ± %.8f, got Y:%.8f",
 				data.yExpected,
 				data.toleranceXY,
-				*output.Y,
+				output.Y,
 			)
 		}
 
-		if math.Abs(*output.Z-data.zExpected) > data.toleranceZ {
+		if math.Abs(output.Z-data.zExpected) > data.toleranceZ {
 			t.Errorf(
 				"Expected Z within %.8f ± %.8f, got Z:%.8f",
 				data.zExpected,
 				data.toleranceZ,
-				*output.Z,
+				output.Z,
 			)
 		}
 	}
@@ -81,9 +81,9 @@ func TestConvertsFromUnknownSridReturnsError(t *testing.T) {
 		-1,
 		4326,
 		geometry.Coordinate{
-			X: &x,
-			Y: &y,
-			Z: &z,
+			X: x,
+			Y: y,
+			Z: z,
 		},
 	)
 
@@ -101,9 +101,9 @@ func TestConvertsToUnknownSridReturnsError(t *testing.T) {
 		32633,
 		-2,
 		geometry.Coordinate{
-			X: &x,
-			Y: &y,
-			Z: &z,
+			X: x,
+			Y: y,
+			Z: z,
 		},
 	)
 
@@ -123,9 +123,9 @@ func TestConvertsFrom4326toWGS84Cartesian(t *testing.T) {
 
 	output, err := coordinateConverter.ConvertToWGS84Cartesian(
 		geometry.Coordinate{
-			X: &x,
-			Y: &y,
-			Z: &z,
+			X: x,
+			Y: y,
+			Z: z,
 		},
 		4326,
 	)
@@ -134,27 +134,27 @@ func TestConvertsFrom4326toWGS84Cartesian(t *testing.T) {
 		t.Errorf("Unexpected error occurred: %s", err.Error())
 	}
 
-	if math.Abs(*output.X-xExpected) > 5E-3 {
+	if math.Abs(output.X-xExpected) > 5E-3 {
 		t.Errorf(
 			"Expected X: %.2f, got X:%.2f",
 			xExpected,
-			*output.X,
+			output.X,
 		)
 	}
 
-	if math.Abs(*output.Y-yExpected) > 5E-3 {
+	if math.Abs(output.Y-yExpected) > 5E-3 {
 		t.Errorf(
 			"Expected Y:%.2f, got Y:%.2f",
 			yExpected,
-			*output.Y,
+			output.Y,
 		)
 	}
 
-	if math.Abs(*output.Z-zExpected) > 5E-3 {
+	if math.Abs(output.Z-zExpected) > 5E-3 {
 		t.Errorf(
 			"Expected Z:%.2f, got Z:%.2f",
 			zExpected,
-			*output.Z,
+			output.Z,
 		)
 	}
 }

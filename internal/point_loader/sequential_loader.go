@@ -39,9 +39,14 @@ func (eb *SequentialLoader) GetNext() (*data.Point, bool) {
 	length := len(eb.sequentialList)
 	counter := int(atomic.AddInt64(&eb.currentKeyIndex, 1))
 	if counter > length-1 {
+		// marks the slice nil for garbage collection
+		eb.sequentialList = nil
 		return nil, false
 	} else {
-		return eb.sequentialList[counter], atomic.LoadInt64(&eb.currentKeyIndex) < int64(length-1)
+		value := eb.sequentialList[counter]
+		// deallocates the pointer for GC purposes
+		eb.sequentialList[counter] = nil
+		return value, atomic.LoadInt64(&eb.currentKeyIndex) < int64(length-1)
 	}
 }
 

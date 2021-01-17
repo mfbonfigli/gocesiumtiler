@@ -72,7 +72,7 @@ func (tree *GridTree) AddPoint(coordinate *geometry.Coordinate, r uint8, g uint8
 
 func (tree *GridTree) getPointFromRawData(coordinate *geometry.Coordinate, r uint8, g uint8, b uint8, intensity uint8, classification uint8, srid int) *data.Point {
 	wgs84coords, err := tree.coordinateConverter.ConvertCoordinateSrid(srid, 4326, *coordinate)
-	z := tree.elevationCorrector.CorrectElevation(*wgs84coords.X, *wgs84coords.Y, *wgs84coords.Z)
+	z := tree.elevationCorrector.CorrectElevation(wgs84coords.X, wgs84coords.Y, wgs84coords.Z)
 
 	worldMercatorCoords, err := tree.coordinateConverter.ConvertCoordinateSrid(
 		srid,
@@ -80,7 +80,7 @@ func (tree *GridTree) getPointFromRawData(coordinate *geometry.Coordinate, r uin
 		geometry.Coordinate{
 			X: coordinate.X,
 			Y: coordinate.Y,
-			Z: &z,
+			Z: z,
 		},
 	)
 
@@ -88,7 +88,7 @@ func (tree *GridTree) getPointFromRawData(coordinate *geometry.Coordinate, r uin
 		log.Fatal(err)
 	}
 
-	return data.NewPoint(*worldMercatorCoords.X, *worldMercatorCoords.Y, *worldMercatorCoords.Z, r, g, b, intensity, classification)
+	return data.NewPoint(worldMercatorCoords.X, worldMercatorCoords.Y, worldMercatorCoords.Z, r, g, b, intensity, classification)
 }
 
 

@@ -140,9 +140,9 @@ func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode, nu
 			fmt.Println("a")
 		}
 		srcCoord := geometry.Coordinate{
-			X: &point.X,
-			Y: &point.Y,
-			Z: &point.Z,
+			X: point.X,
+			Y: point.Y,
+			Z: point.Z,
 		}
 
 		// ConvertCoordinateSrid coords according to cesium CRS
@@ -151,9 +151,9 @@ func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode, nu
 			return nil, err
 		}
 
-		intermediateData.coords[i*3] = *outCrd.X
-		intermediateData.coords[i*3+1] = *outCrd.Y
-		intermediateData.coords[i*3+2] = *outCrd.Z
+		intermediateData.coords[i*3] = outCrd.X
+		intermediateData.coords[i*3+1] = outCrd.Y
+		intermediateData.coords[i*3+2] = outCrd.Z
 
 		intermediateData.colors[i*3] = point.R
 		intermediateData.colors[i*3+1] = point.G

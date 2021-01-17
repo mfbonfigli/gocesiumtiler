@@ -110,5 +110,5 @@ func (t *RandomTree) getPointFromRawData(coordinate *geometry.Coordinate, r uint
 		log.Fatal(err)
 	}
 
-	return data.NewPoint(*tr.X, *tr.Y, t.elevationCorrector.CorrectElevation(*tr.X, *tr.Y, *tr.Z), r, g, b, intensity, classification)
+	return data.NewPoint(tr.X, tr.Y, t.elevationCorrector.CorrectElevation(tr.X, tr.Y, tr.Z), r, g, b, intensity, classification)
 }

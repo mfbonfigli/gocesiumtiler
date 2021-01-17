@@ -33,6 +33,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	// "github.com/pkg/profile" // enable for profiling
 )
 
 const VERSION = "1.1.0"
@@ -48,7 +49,8 @@ const logo = `
 `
 
 func main() {
-	//defer profile.Start(profile.CPUProfile).Stop()
+	// remove comment to enable the profiler (remember to remove comment in the imports)
+	// defer profile.Start(profile.MemProfileRate(1)).Stop()
 
 	// Retrieve command line args
 	flags := tools.ParseFlags()
