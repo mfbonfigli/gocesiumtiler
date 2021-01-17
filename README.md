@@ -33,7 +33,7 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 
 ## Changelog
 ##### Version 1.1.0 
-* Added a new tiling algorithm that should greatly improve the output quality.
+* Added a new tiling algorithm that greatly improves the output quality.
 
 ##### Version 1.0.3 
 * Added shorthand versions of input flags and a new intro logo. Also a major code refactoring has happened behind the scenes. 
