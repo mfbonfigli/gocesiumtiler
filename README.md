@@ -32,6 +32,9 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 
 
 ## Changelog
+##### Version 1.1.1 
+* Fixed a bug that prevented the executable to be used on computers other than the one where the code was built.
+
 ##### Version 1.1.0 
 * Added a new tiling algorithm that greatly improves the output quality.
 
@@ -66,6 +69,9 @@ To launch the tests use the command `go test ./test/... -v`.
 ## Usage
 
 <b>The code expects to find a copy of the [static](assets) folder in the same path where the compiled executable runs.</b>
+
+> Alternatively, from version 1.1.1 you can also specify the assets folder location (i.e. the folder that contains the `assets` folder) 
+by setting the `GOCESIUMTILER_WORKDIR` environment variable in your system.
 
 To run just execute the binary tool with the appropriate flags.
 
@@ -111,7 +117,6 @@ gocesiumtiler -help
   -x float              Max cell size in meters for the grid algorithm. It roughly represents the max spacing between any two samples.  (shorthand for grid-max-size) (default 5)
   -z float              Vertical offset to apply to points, in meters. (shorthand for zoffset)
   -zoffset float        Vertical offset to apply to points, in meters.
-
 ```
 
 Note: the "hq" flag present in versions <= 1.0.3 has been removed and replaced by the "randombox" setting for the `-algorithm` flag.

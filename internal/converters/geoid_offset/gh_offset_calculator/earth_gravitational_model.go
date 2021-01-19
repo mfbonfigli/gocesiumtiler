@@ -64,7 +64,7 @@ func newEarthGraviationalModel(nmax int, wgs84 bool) *egm {
 	model.snmGeopCoef = make([]float64, geopCoefLength)
 	model.as = make([]float64, nmax+1)
 
-	exPath := tools.GetExecutablePath()
+	exPath := tools.GetRootFolder()
 
 	// Loading Earth Gravitational Model data
 	err := model.load(path.Join(exPath, "assets", "egm180.nor"))
