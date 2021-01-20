@@ -35,7 +35,7 @@ func TestConsumerSinglePointNoChildrenEPSG4326(t *testing.T) {
 	}
 
 	// generate a temp dir and defer its deletion
-	tempdir, _ := ioutil.TempDir(tools.GetRootFolder(), "temp*")
+	tempdir, _ := ioutil.TempDir(tools.GetExecutablePath(), "temp*")
 	defer func() { _ = os.RemoveAll(tempdir) }()
 
 	// generate a mock workunit
@@ -271,7 +271,7 @@ func TestConsumerSinglePointNoChildrenEPSG32633(t *testing.T) {
 	}
 
 	// generate a temp dir and defer its deletion
-	tempdir, _ := ioutil.TempDir(tools.GetRootFolder(), "temp*")
+	tempdir, _ := ioutil.TempDir(tools.GetExecutablePath(), "temp*")
 	defer func() { _ = os.RemoveAll(tempdir) }()
 
 	// generate a mock workunit
@@ -522,7 +522,7 @@ func TestConsumerOneChild(t *testing.T) {
 	}
 
 	// generate a temp dir and defer its deletion
-	tempdir, _ := ioutil.TempDir(tools.GetRootFolder(), "temp*")
+	tempdir, _ := ioutil.TempDir(tools.GetExecutablePath(), "temp*")
 	defer func() { _ = os.RemoveAll(tempdir) }()
 
 	// generate a mock workunit

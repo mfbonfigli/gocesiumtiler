@@ -22,7 +22,7 @@ type proj4CoordinateConverter struct {
 }
 
 func NewProj4CoordinateConverter() converters.CoordinateConverter {
-	exPath := tools.GetRootFolder()
+	exPath := tools.GetExecutablePath()
 
 	// Set path for retrieving projection assets data
 	proj.SetFinder([]string{path.Join(exPath, "assets", "share")})
