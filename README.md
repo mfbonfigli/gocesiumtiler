@@ -32,6 +32,9 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 
 
 ## Changelog
+##### Version 1.2.0 
+* Added support for `REPLACE` refine mode. Default refine mode is still `ADD`.
+
 ##### Version 1.1.1 
 * Fixed a bug that prevented the executable to be used on computers other than the one where the code was built.
 
