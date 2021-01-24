@@ -375,3 +375,23 @@ func TestHelpDefaultIsFalse(t *testing.T) {
 		t.Errorf("Expected Help = %t, got %t", expected, *flags.Help)
 	}
 }
+
+func TestRefineModeFlagIsParsed(t *testing.T) {
+	expected := "REPLACE"
+	os.Args = []string{"gocesiumtiler", "-refine-mode=" + expected}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flags := tools.ParseFlags()
+	if *flags.RefineMode != expected {
+		t.Errorf("Expected Output = %s, got %s", expected, *flags.RefineMode)
+	}
+}
+
+func TestRefineModeFlagDefaultIsAdd(t *testing.T) {
+	expected := "ADD"
+	os.Args = []string{"gocesiumtiler"}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flags := tools.ParseFlags()
+	if *flags.RefineMode != expected {
+		t.Errorf("Expected Output = %s, got %s", expected, *flags.RefineMode)
+	}
+}

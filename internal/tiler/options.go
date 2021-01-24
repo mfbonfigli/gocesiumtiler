@@ -1,6 +1,9 @@
 package tiler
 
+import "strings"
+
 type Algorithm string
+type RefineMode string
 
 const (
 	// Uniform random pick among all loaded elements. points will tend to be selected in areas with higher density.
@@ -14,18 +17,43 @@ const (
 	RandomBox Algorithm = "RANDOMBOX"
 )
 
+const (
+	RefineModeAdd     RefineMode = "ADD"
+	RefineModeReplace RefineMode = "REPLACE"
+)
+
+func (e RefineMode) String() string {
+	if e == RefineModeAdd {
+		return "ADD"
+	} else if e == RefineModeReplace {
+		return "REPLACE"
+	}
+	return ""
+}
+
+func ParseRefineMode(value string) RefineMode {
+	normalizedValue := strings.Trim(strings.ToUpper(value), " ")
+	if normalizedValue == "ADD" {
+		return RefineModeAdd
+	} else if normalizedValue == "REPLACE" {
+		return RefineModeReplace
+	}
+	return ""
+}
+
 // Contains the options needed for the tiling algorithm
 type TilerOptions struct {
-	Input                  string    // Input LAS file/folder
-	Output                 string    // Output Cesium Tileset folder
-	Srid                   int       // EPSG code for SRID of input LAS points
-	ZOffset                float64   // Z Offset in meters to apply to points during conversion
-	MaxNumPointsPerNode    int32     // Maximum allowed number of points per node for Random and RandomBox Algorithms
-	EnableGeoidZCorrection bool      // Enables the conversion from geoid to ellipsoid height
-	FolderProcessing       bool      // Enables the processing of all LAS files in folder
-	Recursive              bool      // Recursive lookup of LAS files in subfolders
-	Silent                 bool      // Suppressess console messages
-	Algorithm              Algorithm // Algorithm to use
-	CellMaxSize            float64   // Max cell size for grid algorithm
-	CellMinSize            float64   // Min cell size for grid algorithm
+	Input                  string     // Input LAS file/folder
+	Output                 string     // Output Cesium Tileset folder
+	Srid                   int        // EPSG code for SRID of input LAS points
+	ZOffset                float64    // Z Offset in meters to apply to points during conversion
+	MaxNumPointsPerNode    int32      // Maximum allowed number of points per node for Random and RandomBox Algorithms
+	EnableGeoidZCorrection bool       // Enables the conversion from geoid to ellipsoid height
+	FolderProcessing       bool       // Enables the processing of all LAS files in folder
+	Recursive              bool       // Recursive lookup of LAS files in subfolders
+	Silent                 bool       // Suppressess console messages
+	Algorithm              Algorithm  // Algorithm to use
+	CellMaxSize            float64    // Max cell size for grid algorithm
+	CellMinSize            float64    // Min cell size for grid algorithm
+	RefineMode             RefineMode // Refine mode to use to generate the tileset
 }

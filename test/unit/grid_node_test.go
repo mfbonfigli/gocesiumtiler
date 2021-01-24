@@ -10,6 +10,7 @@ import (
 
 func TestGridNodeAddDataPointSinglePoint(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		5.0,
 		1.0,
@@ -40,6 +41,7 @@ func TestGridNodeAddDataPointSinglePoint(t *testing.T) {
 
 func TestGridNodeAddDataPointMultiplePoints(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		10.0,
 		1.0,
@@ -75,6 +77,7 @@ func TestGridNodeAddDataPointMultiplePoints(t *testing.T) {
 
 func TestGridNodeGetInternalSrid(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		5.0,
 		1.0,
@@ -88,6 +91,7 @@ func TestGridNodeGetInternalSrid(t *testing.T) {
 
 func TestGridNodeGetIsRootTrue(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		5.0,
 		1.0,
@@ -101,6 +105,7 @@ func TestGridNodeGetIsRootTrue(t *testing.T) {
 
 func TestGridNodeGetIsRootFalse(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		5.0,
 		1.0,
@@ -115,6 +120,7 @@ func TestGridNodeGetIsRootFalse(t *testing.T) {
 func TestGridNodeGetBoundingBoxRegion(t *testing.T) {
 	inputRegion := geometry.NewBoundingBox(14, 15, 41, 42, 1, 2)
 	node := grid_tree.NewGridNode(
+		nil,
 		inputRegion,
 		5.0,
 		1.0,
@@ -130,6 +136,7 @@ func TestGridNodeGetBoundingBoxRegion(t *testing.T) {
 
 func TestGridNodeGetChildren(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		5.0,
 		1.0,
@@ -174,6 +181,7 @@ func TestGridNodeGetChildren(t *testing.T) {
 
 func TestGridNodeGetPoints(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		1.0,
 		1.0,
@@ -206,6 +214,7 @@ func TestGridNodeGetPoints(t *testing.T) {
 
 func TestGridNodeGetTotalNumberOfPoints(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		1.0,
 		1.0,
@@ -230,6 +239,7 @@ func TestGridNodeGetTotalNumberOfPoints(t *testing.T) {
 
 func TestGridNodeGetNumberOfPoints(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		1.0,
 		0.5,
@@ -258,6 +268,7 @@ func TestGridNodeGetNumberOfPoints(t *testing.T) {
 
 func TestGridNodeIsLeaf(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		1.0,
 		0.5,
@@ -283,6 +294,7 @@ func TestGridNodeIsLeaf(t *testing.T) {
 
 func TestGridNodeIsInitialized(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		1.0,
 		0.5,
@@ -303,6 +315,7 @@ func TestGridNodeIsInitialized(t *testing.T) {
 
 func TestGridNodeComputeGeometricError(t *testing.T) {
 	node := grid_tree.NewGridNode(
+		nil,
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		1.0,
 		0.5,
@@ -312,5 +325,31 @@ func TestGridNodeComputeGeometricError(t *testing.T) {
 	expectedError := 1.0 * math.Sqrt(3) * 2
 	if node.ComputeGeometricError() != expectedError {
 		t.Errorf("Expected ComputeGeometricError %f, got %f", expectedError, node.ComputeGeometricError())
+	}
+}
+
+func TestGridNodeGetParent(t *testing.T) {
+	node := grid_tree.NewGridNode(
+		nil,
+		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
+		1.0,
+		0.5,
+		true,
+	)
+
+	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)
+	node.AddDataPoint(point)
+
+	point = data.NewPoint(14.3, 41, 1, 2, 3, 4, 5, 6)
+	node.AddDataPoint(point)
+
+	node.(*grid_tree.GridNode).BuildPoints()
+
+	if node.GetParent() != nil {
+		t.Errorf("Unexpected parent node")
+	}
+
+	if node.GetChildren()[0].GetParent() != node {
+		t.Errorf("Unexpected parent node")
 	}
 }

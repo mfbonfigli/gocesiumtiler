@@ -95,7 +95,7 @@ func (tree *GridTree) getPointFromRawData(coordinate *geometry.Coordinate, r uin
 
 func (tree *GridTree) init() {
 	box := tree.GetBounds()
-	node := NewGridNode(geometry.NewBoundingBox(box[0], box[1], box[2], box[3], box[4], box[5]), tree.maxCellSize, tree.minCellSize, true)
+	node := NewGridNode(nil, geometry.NewBoundingBox(box[0], box[1], box[2], box[3], box[4], box[5]), tree.maxCellSize, tree.minCellSize, true)
 	tree.rootNode = node
 	tree.InitializeLoader()
 }
