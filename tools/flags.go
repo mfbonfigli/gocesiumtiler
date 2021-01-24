@@ -18,6 +18,7 @@ type Flags struct {
 	Algorithm                 *string
 	GridCellMaxSize           *float64
 	GridCellMinSize           *float64
+	RefineMode                *string
 	Help                      *bool
 	Version                   *bool
 }
@@ -36,6 +37,7 @@ func ParseFlags() Flags {
 	algorithm := defineStringFlag("algorithm", "a", "grid", "Sets the algorithm to use. Must be one of Grid,Random,RandomBox. Grid algorithm is highly suggested, others are deprecated and will be removed in future versions.")
 	gridCellMaxSize := defineFloat64Flag("grid-max-size", "x", 5.0, "Max cell size in meters for the grid algorithm. It roughly represents the max spacing between any two samples. ")
 	gridCellMinSize := defineFloat64Flag("grid-min-size", "n", 0.15, "Min cell size in meters for the grid algorithm. It roughly represents the minimum possible size of a 3d tile. ")
+	refineMode := defineStringFlag("refine-mode", "", "ADD", "Type of refine mode, can be 'ADD' or 'REPLACE'. 'ADD' means that child tiles will not contain the parent tiles points. 'REPLACE' means that they will also contain the parent tiles points. ADD implies less disk space but more network overhead when fetching the data, REPLACE is the opposite.")
 	help := defineBoolFlag("help", "h", false, "Displays this help.")
 	version := defineBoolFlag("version", "v", false, "Displays the version of gocesiumtiler.")
 
@@ -55,6 +57,7 @@ func ParseFlags() Flags {
 		Algorithm:                 algorithm,
 		GridCellMaxSize:           gridCellMaxSize,
 		GridCellMinSize:           gridCellMinSize,
+		RefineMode:                refineMode,
 		Help:                      help,
 		Version:                   version,
 	}
@@ -63,7 +66,7 @@ func ParseFlags() Flags {
 func defineStringFlag(name string, shortHand string, defaultValue string, usage string) *string {
 	var output string
 	flag.StringVar(&output, name, defaultValue, usage)
-	if shortHand != name {
+	if shortHand != name && shortHand != "" {
 		flag.StringVar(&output, shortHand, defaultValue, usage+" (shorthand for "+name+")")
 	}
 

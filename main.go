@@ -90,6 +90,7 @@ func main() {
 		Algorithm:              tiler.Algorithm(strings.ToUpper(*flags.Algorithm)),
 		CellMinSize:            *flags.GridCellMinSize,
 		CellMaxSize:            *flags.GridCellMaxSize,
+		RefineMode:             tiler.ParseRefineMode(*flags.RefineMode),
 	}
 
 	// Validate TilerOptions
@@ -120,6 +121,10 @@ func validateOptions(opts *tiler.TilerOptions) (string, bool) {
 
 	if opts.CellMinSize > opts.CellMaxSize {
 		return "grid-max-size parameter cannot be lower than grid-min-size parameter", false
+	}
+
+	if opts.RefineMode == "" {
+		return "refine-mode should be either ADD or REPLACE", false
 	}
 
 	return "", true

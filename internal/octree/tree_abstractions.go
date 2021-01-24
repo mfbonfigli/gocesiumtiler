@@ -26,4 +26,6 @@ type INode interface {
 	IsLeaf() bool
 	IsInitialized() bool
 	ComputeGeometricError() float64
+	GetParent() INode
+	GetBoundingBox() *geometry.BoundingBox
 }

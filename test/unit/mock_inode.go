@@ -43,6 +43,10 @@ func (mockNode *mockNode) GetBoundingBoxRegion(converter converters.CoordinateCo
 	return reg, nil
 }
 
+func (mockNode *mockNode) GetBoundingBox() *geometry.BoundingBox {
+	return mockNode.boundingBox
+}
+
 func (mockNode *mockNode) GetChildren() [8]octree.INode {
 	return mockNode.children
 }
@@ -77,4 +81,8 @@ func (mockNode *mockNode) IsInitialized() bool {
 
 func (mockNode *mockNode) ComputeGeometricError() float64 {
 	return mockNode.geometricError
+}
+
+func (mockNode *mockNode) GetParent() octree.INode {
+	return mockNode.parent
 }

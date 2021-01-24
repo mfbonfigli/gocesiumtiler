@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
+	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
+	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"io/ioutil"
 	"path"
@@ -17,11 +19,13 @@ import (
 
 type StandardConsumer struct {
 	coordinateConverter converters.CoordinateConverter
+	refineMode          tiler.RefineMode
 }
 
-func NewStandardConsumer(coordinateConverter converters.CoordinateConverter) *StandardConsumer {
+func NewStandardConsumer(coordinateConverter converters.CoordinateConverter, refineMode tiler.RefineMode) *StandardConsumer {
 	return &StandardConsumer{
 		coordinateConverter: coordinateConverter,
+		refineMode:          refineMode,
 	}
 }
 
@@ -89,8 +93,7 @@ func (c *StandardConsumer) writeBinaryPntsFile(workUnit WorkUnit) error {
 		return err
 	}
 
-	pointNo := len(node.GetPoints())
-	intermediatePointData, err := c.generateIntermediateDataForPnts(node, pointNo)
+	intermediatePointData, err := c.generateIntermediateDataForPnts(node)
 	if err != nil {
 		return err
 	}
@@ -105,10 +108,10 @@ func (c *StandardConsumer) writeBinaryPntsFile(workUnit WorkUnit) error {
 	positionBytes := tools.ConvertTruncateFloat64ToFloat32ByteArray(intermediatePointData.coords)
 
 	// Feature table
-	featureTableBytes, featureTableLen := c.generateFeatureTable(averageXYZ[0], averageXYZ[1], averageXYZ[2], pointNo)
+	featureTableBytes, featureTableLen := c.generateFeatureTable(averageXYZ[0], averageXYZ[1], averageXYZ[2], intermediatePointData.numPoints)
 
 	// Batch table
-	batchTableBytes, batchTableLen := c.generateBatchTable(pointNo)
+	batchTableBytes, batchTableLen := c.generateBatchTable(intermediatePointData.numPoints)
 
 	// Appending binary content to slice
 	outputByte := c.generatePntsByteArray(intermediatePointData, positionBytes, featureTableBytes, featureTableLen, batchTableBytes, batchTableLen)
@@ -124,7 +127,14 @@ func (c *StandardConsumer) writeBinaryPntsFile(workUnit WorkUnit) error {
 	return nil
 }
 
-func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode, numPoints int) (*intermediateData, error) {
+func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode) (*intermediateData, error) {
+	points := node.GetPoints()
+
+	if c.refineMode == tiler.RefineModeReplace {
+		points = appendParentPoints(node, points)
+	}
+
+	numPoints := len(points)
 	intermediateData := intermediateData{
 		coords:          make([]float64, numPoints*3),
 		colors:          make([]uint8, numPoints*3),
@@ -134,8 +144,8 @@ func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode, nu
 	}
 
 	// Decomposing tile data properties in separate sublists for coords, colors, intensities and classifications
-	for i := 0; i < len(node.GetPoints()); i++ {
-		point := node.GetPoints()[i]
+	for i := 0; i < len(points); i++ {
+		point := points[i]
 		if point == nil {
 			fmt.Println("a")
 		}
@@ -164,6 +174,30 @@ func (c *StandardConsumer) generateIntermediateDataForPnts(node octree.INode, nu
 	}
 
 	return &intermediateData, nil
+}
+
+func appendParentPoints(node octree.INode, points []*data.Point) []*data.Point {
+	parent := node.GetParent()
+	boundingBox := node.GetBoundingBox()
+	isContained := func(point *data.Point) bool {
+		if point.X >= boundingBox.Xmin && point.X <= boundingBox.Xmax &&
+			point.Y >= boundingBox.Ymin && point.Y <= boundingBox.Ymax &&
+			point.Z >= boundingBox.Zmin && point.Z <= boundingBox.Zmax {
+			return true
+		}
+		return false
+	}
+
+	for parent != nil {
+		for _, point := range parent.GetPoints() {
+			if isContained(point) {
+				points = append(points, point)
+			}
+		}
+		parent = parent.GetParent()
+	}
+
+	return points
 }
 
 func (c *StandardConsumer) generateFeatureTable(avgX float64, avgY float64, avgZ float64, numPoints int) ([]byte, int) {
@@ -316,7 +350,7 @@ func (c *StandardConsumer) generateTilesetRoot(node octree.INode) (*Root, error)
 		Content:        Content{"content.pnts"},
 		BoundingVolume: BoundingVolume{reg.GetAsArray()},
 		GeometricError: node.ComputeGeometricError(),
-		Refine:         "ADD",
+		Refine:         c.refineMode.String(),
 		Children:       children,
 	}
 
@@ -367,6 +401,6 @@ func (c *StandardConsumer) generateTilesetChild(child octree.INode, childIndex i
 		Region: reg.GetAsArray(),
 	}
 	childJson.GeometricError = child.ComputeGeometricError()
-	childJson.Refine = "ADD"
+	childJson.Refine = c.refineMode.String()
 	return &childJson, nil
 }

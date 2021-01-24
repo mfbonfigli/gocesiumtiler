@@ -107,6 +107,7 @@ gocesiumtiler -help
   -output string        Specifies the output folder where to write the tileset data.
   -r                    Enables recursive lookup for all .las files inside the subfolders (shorthand for recursive)
   -recursive            Enables recursive lookup for all .las files inside the subfolders
+  -refine-mode          Type of refine mode, can be 'ADD' or 'REPLACE'. 'ADD' means that child tiles will not contain the parent tiles points. 'REPLACE' means that they will also contain the parent tiles points. ADD implies less disk space but more network overhead when fetching the data, REPLACE is the opposite. (default "ADD")
   -s                    Use to suppress all the non-error messages. (shorthand for silent)
   -silent               Use to suppress all the non-error messages.
   -srid int             EPSG srid code of input points. (default 4326)
@@ -173,6 +174,20 @@ This algorithm is very similar to the Random algorithm but with one difference. 
 and the bins are randomly shuffled. Then the points are picked one by one from each bin. This ensures that points are randomly 
 distributed but also that all areas of space, even the ones with fewer points, are equally likely to be represented at higher level of details. 
 
+### Refine Modes
+Cesium tilesets can have two different *refine* settings, `ADD` and `REPLACE`, briefly explained as follow:
+- `ADD` refine mode means that a certain tile will contain only the points not already contained in the parent tiles. This 
+means that to render the points in the tile all parent tiles points must be fetched and loaded. In other words this mode 
+tells Cesium to display the Tile plus its parent.
+- `REPLACE` refine mode means that a certain tile will be self-contained, i.e. its `.pnts` file will contain ALL the points
+needed for rendering, including those already belonging to the parent tiles. In other words this mode instructs Cesium
+to only visualize this tile and not the points contained in its parent too.
+
+As a consequence in gocesiumtiler `ADD` mode results in smalled disk space as there are no duplicate points stored across
+LODs. Plus it is faster. In theory `REPLACE` mode might however be more memory and network efficient as Cesium can only visualize and load the
+required tile for the given LOD and not also the parent tiles, but this highly depends on how the Cesium Viewer settings
+have been configured. For this reason `ADD` mode is the default and suggested one, but one can specify `REPLACE` mode 
+by using `-refine-mode REPLACE`.
 
 ## Precompiled Binaries
 Along with the source code a prebuilt binary for Windows x64 is provided for each release of the tool in the github page.

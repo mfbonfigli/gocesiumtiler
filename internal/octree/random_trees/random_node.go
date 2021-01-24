@@ -91,6 +91,10 @@ func (n *RandomNode) GetBoundingBoxRegion(converter converters.CoordinateConvert
 	return reg, nil
 }
 
+func (n *RandomNode) GetBoundingBox() *geometry.BoundingBox {
+	return n.boundingBox
+}
+
 func (n *RandomNode) GetChildren() [8]octree.INode {
 	return n.children
 }

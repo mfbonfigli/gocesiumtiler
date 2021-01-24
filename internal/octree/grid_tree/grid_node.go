@@ -17,6 +17,7 @@ import (
 // by the cells to its children which will have smaller cells.
 type GridNode struct {
 	root                bool
+	parent              octree.INode
 	boundingBox         *geometry.BoundingBox
 	children            [8]octree.INode
 	cells               map[gridIndex]*gridCell
@@ -31,8 +32,9 @@ type GridNode struct {
 }
 
 // Instantiates a new GridNode
-func NewGridNode(boundingBox *geometry.BoundingBox, maxCellSize float64, minCellSize float64, root bool) octree.INode {
+func NewGridNode(parent octree.INode, boundingBox *geometry.BoundingBox, maxCellSize float64, minCellSize float64, root bool) octree.INode {
 	node := GridNode{
+		parent:              parent,						   // the parent node
 		root:                root,                             // if the node is the tree root
 		boundingBox:         boundingBox,                      // bounding box of the node
 		cellSize:            maxCellSize,                      // max size setting to use for gridCells
@@ -83,6 +85,10 @@ func (n *GridNode) GetBoundingBoxRegion(converter converters.CoordinateConverter
 	}
 
 	return reg, nil
+}
+
+func (n *GridNode) GetBoundingBox() *geometry.BoundingBox {
+	return n.boundingBox
 }
 
 func (n *GridNode) GetChildren() [8]octree.INode {
@@ -150,6 +156,10 @@ func (n *GridNode) BuildPoints() {
 			child.(*GridNode).BuildPoints()
 		}
 	}
+}
+
+func (n *GridNode) GetParent() octree.INode {
+	return n.parent
 }
 
 // gets the grid cell where the given point falls into, eventually creating it if it does not exist
@@ -220,7 +230,7 @@ func (n *GridNode) initializeChildren() {
 	n.Lock()
 	for i := uint8(0); i < 8; i++ {
 		if n.children[i] == nil {
-			n.children[i] = NewGridNode(getOctantBoundingBox(&i, n.boundingBox), n.cellSize/2.0, n.minCellSize, false)
+			n.children[i] = NewGridNode(n, getOctantBoundingBox(&i, n.boundingBox), n.cellSize/2.0, n.minCellSize, false)
 		}
 	}
 	n.initialized = true
