@@ -28,11 +28,12 @@ type GridNode struct {
 	numberOfPoints      int32
 	leaf                int32
 	initialized         bool
+	rootGeometricError	float64
 	sync.RWMutex
 }
 
 // Instantiates a new GridNode
-func NewGridNode(parent octree.INode, boundingBox *geometry.BoundingBox, maxCellSize float64, minCellSize float64, root bool) octree.INode {
+func NewGridNode(parent octree.INode, boundingBox *geometry.BoundingBox, maxCellSize float64, minCellSize float64, root bool, rootGeometricError float64) octree.INode {
 	node := GridNode{
 		parent:              parent,						   // the parent node
 		root:                root,                             // if the node is the tree root
@@ -45,6 +46,7 @@ func NewGridNode(parent octree.INode, boundingBox *geometry.BoundingBox, maxCell
 		numberOfPoints:      0,                                // number of points stored in this node (children excluded)
 		leaf:                1,                                // 1 if is a leaf, 0 otherwise
 		initialized:         false,                            // flag to see if the node has been initialized
+		rootGeometricError:  rootGeometricError,
 	}
 
 	return &node
@@ -122,6 +124,9 @@ func (n *GridNode) IsRoot() bool {
 // Computes the geometric error for the given GridNode
 func (n *GridNode) ComputeGeometricError() float64 {
 	// geometric error is estimated as the maximum possible distance between two points lying in the cell
+	if n.IsRoot() {
+		return n.cellSize * math.Sqrt(3) * 2 * n.rootGeometricError
+	}
 	return n.cellSize * math.Sqrt(3) * 2
 }
 
@@ -230,7 +235,7 @@ func (n *GridNode) initializeChildren() {
 	n.Lock()
 	for i := uint8(0); i < 8; i++ {
 		if n.children[i] == nil {
-			n.children[i] = NewGridNode(n, getOctantBoundingBox(&i, n.boundingBox), n.cellSize/2.0, n.minCellSize, false)
+			n.children[i] = NewGridNode(n, getOctantBoundingBox(&i, n.boundingBox), n.cellSize/2.0, n.minCellSize, false, n.rootGeometricError)
 		}
 	}
 	n.initialized = true

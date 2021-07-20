@@ -21,6 +21,7 @@ type Flags struct {
 	RefineMode                *string
 	Help                      *bool
 	Version                   *bool
+	RootGeometricError		  *float64
 }
 
 func ParseFlags() Flags {
@@ -40,6 +41,7 @@ func ParseFlags() Flags {
 	refineMode := defineStringFlag("refine-mode", "", "ADD", "Type of refine mode, can be 'ADD' or 'REPLACE'. 'ADD' means that child tiles will not contain the parent tiles points. 'REPLACE' means that they will also contain the parent tiles points. ADD implies less disk space but more network overhead when fetching the data, REPLACE is the opposite.")
 	help := defineBoolFlag("help", "h", false, "Displays this help.")
 	version := defineBoolFlag("version", "v", false, "Displays the version of gocesiumtiler.")
+	rootGeometricError := defineFloat64Flag("root-geometric-error", "k", 1, "Multiplies the geometric error of the root by the given factor. Use this flag if you want to display the tiles in higher zoom levels") 
 
 	flag.Parse()
 
@@ -60,6 +62,7 @@ func ParseFlags() Flags {
 		RefineMode:                refineMode,
 		Help:                      help,
 		Version:                   version,
+		RootGeometricError:		   rootGeometricError,
 	}
 }
 

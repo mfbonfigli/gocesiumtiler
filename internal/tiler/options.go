@@ -56,4 +56,5 @@ type TilerOptions struct {
 	CellMaxSize            float64    // Max cell size for grid algorithm
 	CellMinSize            float64    // Min cell size for grid algorithm
 	RefineMode             RefineMode // Refine mode to use to generate the tileset
+	RootGeometricError	   float64
 }

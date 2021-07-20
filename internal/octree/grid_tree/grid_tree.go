@@ -24,12 +24,13 @@ type GridTree struct {
 	minCellSize         float64
 	coordinateConverter converters.CoordinateConverter
 	elevationCorrector  converters.ElevationCorrector
+	rootGeometricError	float64
 	point_loader.Loader
 	sync.RWMutex
 }
 
 // Builds an empty GridTree initializing its properties to the correct defaults
-func NewGridTree(coordinateConverter converters.CoordinateConverter, elevationCorrector converters.ElevationCorrector, maxCellSize float64, minCellSize float64) octree.ITree {
+func NewGridTree(coordinateConverter converters.CoordinateConverter, elevationCorrector converters.ElevationCorrector, maxCellSize float64, minCellSize float64, rootGeometricError float64) octree.ITree {
 	return &GridTree{
 		built:               false,
 		maxCellSize:         maxCellSize,
@@ -37,6 +38,7 @@ func NewGridTree(coordinateConverter converters.CoordinateConverter, elevationCo
 		Loader:              point_loader.NewSequentialLoader(),
 		coordinateConverter: coordinateConverter,
 		elevationCorrector:  elevationCorrector,
+		rootGeometricError:  rootGeometricError,
 	}
 }
 
@@ -95,7 +97,7 @@ func (tree *GridTree) getPointFromRawData(coordinate *geometry.Coordinate, r uin
 
 func (tree *GridTree) init() {
 	box := tree.GetBounds()
-	node := NewGridNode(nil, geometry.NewBoundingBox(box[0], box[1], box[2], box[3], box[4], box[5]), tree.maxCellSize, tree.minCellSize, true)
+	node := NewGridNode(nil, geometry.NewBoundingBox(box[0], box[1], box[2], box[3], box[4], box[5]), tree.maxCellSize, tree.minCellSize, true, tree.rootGeometricError)
 	tree.rootNode = node
 	tree.InitializeLoader()
 }

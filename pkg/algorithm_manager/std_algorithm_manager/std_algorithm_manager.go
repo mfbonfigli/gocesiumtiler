@@ -63,7 +63,7 @@ func evaluateElevationCorrectionAlgorithm(options *tiler.TilerOptions, ellipsoid
 func evaluateTreeAlgorithm(options *tiler.TilerOptions, converter converters.CoordinateConverter, elevationCorrection converters.ElevationCorrector) octree.ITree {
 	switch options.Algorithm {
 	case tiler.Grid:
-		return grid_tree.NewGridTree(converter, elevationCorrection, options.CellMaxSize, options.CellMinSize)
+		return grid_tree.NewGridTree(converter, elevationCorrection, options.CellMaxSize, options.CellMinSize, options.RootGeometricError)
 	case tiler.RandomBox:
 		return random_trees.NewBoxedRandomTree(options, converter, elevationCorrection)
 	case tiler.Random:

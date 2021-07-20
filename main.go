@@ -91,6 +91,7 @@ func main() {
 		CellMinSize:            *flags.GridCellMinSize,
 		CellMaxSize:            *flags.GridCellMaxSize,
 		RefineMode:             tiler.ParseRefineMode(*flags.RefineMode),
+		RootGeometricError:		*flags.RootGeometricError,
 	}
 
 	// Validate TilerOptions
