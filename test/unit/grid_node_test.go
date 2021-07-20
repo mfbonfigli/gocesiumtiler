@@ -15,6 +15,7 @@ func TestGridNodeAddDataPointSinglePoint(t *testing.T) {
 		5.0,
 		1.0,
 		true,
+		1,
 	)
 
 	point := data.NewPoint(14, 41, 1, 2, 3, 4, 5, 6)
@@ -46,6 +47,7 @@ func TestGridNodeAddDataPointMultiplePoints(t *testing.T) {
 		10.0,
 		1.0,
 		true,
+		1,
 	)
 
 	point := data.NewPoint(11, 11, 1, 2, 3, 4, 5, 6)
@@ -82,6 +84,7 @@ func TestGridNodeGetInternalSrid(t *testing.T) {
 		5.0,
 		1.0,
 		true,
+		1,
 	)
 
 	if node.GetInternalSrid() != 3395 {
@@ -96,6 +99,7 @@ func TestGridNodeGetIsRootTrue(t *testing.T) {
 		5.0,
 		1.0,
 		true,
+		1,
 	)
 
 	if node.IsRoot() != true {
@@ -110,6 +114,7 @@ func TestGridNodeGetIsRootFalse(t *testing.T) {
 		5.0,
 		1.0,
 		false,
+		1,
 	)
 
 	if node.IsRoot() != false {
@@ -125,6 +130,7 @@ func TestGridNodeGetBoundingBoxRegion(t *testing.T) {
 		5.0,
 		1.0,
 		false,
+		1,
 	)
 
 	region, _ := node.GetBoundingBoxRegion(&mockCoordinateConverter{})
@@ -141,6 +147,7 @@ func TestGridNodeGetChildren(t *testing.T) {
 		5.0,
 		1.0,
 		true,
+		1,
 	)
 
 	point := data.NewPoint(14, 41, 1, 2, 3, 4, 5, 6)
@@ -186,6 +193,7 @@ func TestGridNodeGetPoints(t *testing.T) {
 		1.0,
 		1.0,
 		true,
+		1,
 	)
 
 	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)
@@ -219,6 +227,7 @@ func TestGridNodeGetTotalNumberOfPoints(t *testing.T) {
 		1.0,
 		1.0,
 		true,
+		1,
 	)
 
 	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)
@@ -244,6 +253,7 @@ func TestGridNodeGetNumberOfPoints(t *testing.T) {
 		1.0,
 		0.5,
 		true,
+		1,
 	)
 
 	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)
@@ -273,6 +283,7 @@ func TestGridNodeIsLeaf(t *testing.T) {
 		1.0,
 		0.5,
 		true,
+		1,
 	)
 
 	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)
@@ -299,6 +310,7 @@ func TestGridNodeIsInitialized(t *testing.T) {
 		1.0,
 		0.5,
 		true,
+		1,
 	)
 
 	if node.IsInitialized() {
@@ -320,6 +332,7 @@ func TestGridNodeComputeGeometricError(t *testing.T) {
 		1.0,
 		0.5,
 		true,
+		1,
 	)
 
 	expectedError := 1.0 * math.Sqrt(3) * 2
@@ -335,6 +348,7 @@ func TestGridNodeGetParent(t *testing.T) {
 		1.0,
 		0.5,
 		true,
+		1,
 	)
 
 	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)

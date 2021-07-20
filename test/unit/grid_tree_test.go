@@ -28,6 +28,7 @@ func TestTreeAddPointSuccess(t *testing.T) {
 		&mockElevationCorrector{},
 		5.0,
 		0.1,
+		1,
 	)
 
 	x := 14.0
@@ -66,6 +67,7 @@ func TestTreeBuildSuccess(t *testing.T) {
 		&mockElevationCorrector{},
 		5.0,
 		0.1,
+		1,
 	)
 
 	x := 14.0
@@ -106,6 +108,7 @@ func TestGetRootNode(t *testing.T) {
 		&mockElevationCorrector{},
 		5.0,
 		0.1,
+		1,
 	)
 
 	x := 14.0
