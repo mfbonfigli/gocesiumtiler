@@ -319,10 +319,25 @@ func TestGridNodeComputeGeometricError(t *testing.T) {
 		geometry.NewBoundingBox(14, 15, 41, 42, 1, 2),
 		1.0,
 		0.5,
-		true,
+		false,
 	)
 
 	expectedError := 1.0 * math.Sqrt(3) * 2
+	if node.ComputeGeometricError() != expectedError {
+		t.Errorf("Expected ComputeGeometricError %f, got %f", expectedError, node.ComputeGeometricError())
+	}
+}
+
+func TestRootGridNodeComputeGeometricError(t *testing.T) {
+	node := grid_tree.NewGridNode(
+		nil,
+		geometry.NewBoundingBox(14, 16, 41, 42, 1, 2),
+		1.0,
+		0.5,
+		true,
+	)
+
+	expectedError := 1.0 * math.Sqrt(4 + 1 + 1)
 	if node.ComputeGeometricError() != expectedError {
 		t.Errorf("Expected ComputeGeometricError %f, got %f", expectedError, node.ComputeGeometricError())
 	}

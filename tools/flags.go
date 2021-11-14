@@ -8,6 +8,7 @@ type Flags struct {
 	Input                     *string
 	Output                    *string
 	Srid                      *int
+	EightBitColors  		   *bool
 	ZOffset                   *float64
 	MaxNumPts                 *int
 	ZGeoidCorrection          *bool
@@ -27,6 +28,7 @@ func ParseFlags() Flags {
 	input := defineStringFlag("input", "i", "", "Specifies the input las file/folder.")
 	output := defineStringFlag("output", "o", "", "Specifies the output folder where to write the tileset data.")
 	srid := defineIntFlag("srid", "e", 4326, "EPSG srid code of input points.")
+	eightBit := defineBoolFlag("8bit", "b", false, "Assumes the input LAS has colors encoded in eight bit format. Default is false (LAS has 16 bit color depth)")
 	zOffset := defineFloat64Flag("zoffset", "z", 0, "Vertical offset to apply to points, in meters.")
 	maxNumPts := defineIntFlag("maxpts", "m", 50000, "Max number of points per tile for the Random and RandomBox algorithms.")
 	zGeoidCorrection := defineBoolFlag("geoid", "g", false, "Enables Geoid to Ellipsoid elevation correction. Use this flag if your input LAS files have Z coordinates specified relative to the Earth geoid rather than to the standard ellipsoid.")
@@ -47,6 +49,7 @@ func ParseFlags() Flags {
 		Input:                     input,
 		Output:                    output,
 		Srid:                      srid,
+		EightBitColors:            eightBit,
 		ZOffset:                   zOffset,
 		MaxNumPts:                 maxNumPts,
 		ZGeoidCorrection:          zGeoidCorrection,

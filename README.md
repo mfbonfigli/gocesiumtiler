@@ -32,6 +32,11 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 
 
 ## Changelog
+##### Version 1.2.1
+* Added option to support LAS files with 8bit color depth.
+* Fixed a bug when processing multiple files.
+* Fixed a bug in computing the geometric error of the lowest level of detail tile.
+
 ##### Version 1.2.0 
 * Added support for `REPLACE` refine mode. Default refine mode is still `ADD`.
 
@@ -90,8 +95,10 @@ gocesiumtiler -help
 ### Flags
 
 ```
+  -8bit                 Assumes the input LAS has colors encoded in eight bit format. Default is false (LAS has 16 bit color depth)
   -a string             Sets the algorithm to use. Must be one of Grid,Random,RandomBox. Grid algorithm is highly suggested, others are deprecated and will be removed in future versions. (shorthand for algorithm) (default "grid")
   -algorithm string     Sets the algorithm to use. Must be one of Grid,Random,RandomBox. Grid algorithm is highly suggested, others are deprecated and will be removed in future versions. (default "grid")
+  -b                    Assumes the input LAS has colors encoded in eight bit format. Default is false (LAS has 16 bit color depth). (shorthand for -8bit)
   -e int                EPSG srid code of input points. (shorthand for srid) (default 4326)
   -f                    Enables processing of all las files from input folder. Input must be a folder if specified (shorthand for folder)
   -folder               Enables processing of all las files from input folder. Input must be a folder if specified
