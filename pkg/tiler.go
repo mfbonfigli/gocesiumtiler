@@ -39,11 +39,10 @@ func (tiler *Tiler) RunTiler(opts *tiler.TilerOptions) error {
 	// Prepare list of files to process
 	lasFiles := tiler.fileFinder.GetLasFilesToProcess(opts)
 
-	// Define point_loader strategy
-	var tree = tiler.algorithmManager.GetTreeAlgorithm()
-
 	// load las points in octree buffer
 	for i, filePath := range lasFiles {
+		// Define point_loader strategy
+		var tree = tiler.algorithmManager.GetTreeAlgorithm()
 		tools.LogOutput("Processing file " + strconv.Itoa(i+1) + "/" + strconv.Itoa(len(lasFiles)))
 		tiler.processLasFile(filePath, opts, tree)
 	}
@@ -100,7 +99,7 @@ func readLas(file string, opts *tiler.TilerOptions, tree octree.ITree) error {
 	var lf *lidario.LasFile
 	var err error
 	var lasFileLoader = lidario.NewLasFileLoader(tree)
-	lf, err = lasFileLoader.LoadLasFile(file, opts.Srid)
+	lf, err = lasFileLoader.LoadLasFile(file, opts.Srid, opts.EightBitColors)
 	if err != nil {
 		return err
 	}

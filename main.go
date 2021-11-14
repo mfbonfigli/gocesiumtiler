@@ -81,6 +81,7 @@ func main() {
 		Input:                  *flags.Input,
 		Output:                 *flags.Output,
 		Srid:                   *flags.Srid,
+		EightBitColors:         *flags.EightBitColors,
 		ZOffset:                *flags.ZOffset,
 		MaxNumPointsPerNode:    int32(*flags.MaxNumPts),
 		EnableGeoidZCorrection: *flags.ZGeoidCorrection,

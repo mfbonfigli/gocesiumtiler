@@ -46,6 +46,7 @@ type TilerOptions struct {
 	Input                  string     // Input LAS file/folder
 	Output                 string     // Output Cesium Tileset folder
 	Srid                   int        // EPSG code for SRID of input LAS points
+	EightBitColors         bool       // if true assume that LAS uses 8bit color depth
 	ZOffset                float64    // Z Offset in meters to apply to points during conversion
 	MaxNumPointsPerNode    int32      // Maximum allowed number of points per node for Random and RandomBox Algorithms
 	EnableGeoidZCorrection bool       // Enables the conversion from geoid to ellipsoid height

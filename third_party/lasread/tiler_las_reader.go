@@ -27,18 +27,18 @@ func NewLasFileLoader(tree octree.ITree) *LasFileLoader {
 
 // NewLasFile creates a new LasFile structure which stores the points data directly into Point instances
 // which can be retrieved by index using the GetPoint function
-func (lasFileLoader *LasFileLoader) LoadLasFile(fileName string, inSrid int) (*LasFile, error) {
+func (lasFileLoader *LasFileLoader) LoadLasFile(fileName string, inSrid int, eightBitColor bool) (*LasFile, error) {
 	// initialize the VLR array
 	vlrs := []VLR{}
 	las := LasFile{fileName: fileName, fileMode: "r", Header: LasHeader{}, VlrData: vlrs}
-	if err := lasFileLoader.readForOctree(inSrid, &las); err != nil {
+	if err := lasFileLoader.readForOctree(inSrid, eightBitColor, &las); err != nil {
 		return &las, err
 	}
 	return &las, nil
 }
 
 // Reads the las file and produces a LasFile struct instance loading points data into its inner list of Point
-func (lasFileLoader *LasFileLoader) readForOctree(inSrid int, las *LasFile) error {
+func (lasFileLoader *LasFileLoader) readForOctree(inSrid int, eightBitColor bool, las *LasFile) error {
 	var err error
 	if las.f, err = os.Open(las.fileName); err != nil {
 		return err
@@ -66,7 +66,7 @@ func (lasFileLoader *LasFileLoader) readForOctree(inSrid int, las *LasFile) erro
 			las.usePointUserdata = false
 		}
 
-		if err := lasFileLoader.readPointsOctElem(inSrid, las); err != nil {
+		if err := lasFileLoader.readPointsOctElem(inSrid, eightBitColor, las); err != nil {
 			return err
 		}
 	}
@@ -75,7 +75,7 @@ func (lasFileLoader *LasFileLoader) readForOctree(inSrid int, las *LasFile) erro
 
 // Reads all the points of the given las file and parses them into a Point data structure which is then stored
 // in the given LasFile instance
-func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, las *LasFile) error {
+func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor bool, las *LasFile) error {
 	las.Lock()
 	defer las.Unlock()
 	// las.pointDataOctElement = make([]octree.OctElement, las.Header.NumberPoints)
@@ -162,12 +162,16 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, las *LasFile) 
 					offset += 8
 				}
 				if las.Header.PointFormatID == 2 || las.Header.PointFormatID == 3 {
+					var conversionFactor = uint16(256)
+					if eightBitColor {
+						conversionFactor = uint16(1)
+					}
 					//rgb := RgbData{}
-					R = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / 256)
+					R = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / conversionFactor)
 					offset += 2
-					G = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / 256)
+					G = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / conversionFactor)
 					offset += 2
-					B = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / 256)
+					B = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / conversionFactor)
 					offset += 2
 					// las.rgbData[i] = rgb
 				}

@@ -121,6 +121,12 @@ func (n *GridNode) IsRoot() bool {
 
 // Computes the geometric error for the given GridNode
 func (n *GridNode) ComputeGeometricError() float64 {
+	if n.IsRoot() {
+		var w = math.Abs(n.boundingBox.Xmax - n.boundingBox.Xmin)
+		var l = math.Abs(n.boundingBox.Ymax - n.boundingBox.Ymin)
+		var h = math.Abs(n.boundingBox.Zmax - n.boundingBox.Zmin)
+		return math.Sqrt(w * w + l * l + h * h)
+	}
 	// geometric error is estimated as the maximum possible distance between two points lying in the cell
 	return n.cellSize * math.Sqrt(3) * 2
 }
