@@ -32,6 +32,10 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 
 
 ## Changelog
+##### Version 1.2.2
+* Fixed a bug in parsing RGB colors for LAS files having point records of non standard length.
+* Fixed a bug when processing multiple files (this was not really fixed in the previous version).
+
 ##### Version 1.2.1
 * Added option to support LAS files with 8bit color depth.
 * Fixed a bug when processing multiple files.
