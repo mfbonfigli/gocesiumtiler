@@ -19,7 +19,6 @@ type StandardAlgorithmManager struct {
 	options             *tiler.TilerOptions
 	coordinateConverter converters.CoordinateConverter
 	elevationCorrector  converters.ElevationCorrector
-	treeStructure       octree.ITree
 }
 
 func NewAlgorithmManager(opts *tiler.TilerOptions) algorithm_manager.AlgorithmManager {
@@ -31,7 +30,6 @@ func NewAlgorithmManager(opts *tiler.TilerOptions) algorithm_manager.AlgorithmMa
 		options:             opts,
 		coordinateConverter: coordinateConverter,
 		elevationCorrector:  elevationCorrectionAlgorithm,
-		treeStructure:       evaluateTreeAlgorithm(opts, coordinateConverter, elevationCorrectionAlgorithm),
 	}
 
 	return algorithmManager
@@ -42,7 +40,7 @@ func (am *StandardAlgorithmManager) GetElevationCorrectionAlgorithm() converters
 }
 
 func (am *StandardAlgorithmManager) GetTreeAlgorithm() octree.ITree {
-	return am.treeStructure
+	return evaluateTreeAlgorithm(am.options, am.coordinateConverter, am.elevationCorrector)
 }
 
 func (am *StandardAlgorithmManager) GetCoordinateConverterAlgorithm() converters.CoordinateConverter {

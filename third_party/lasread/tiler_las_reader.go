@@ -93,23 +93,15 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 		// return err
 	}
 
-	// Intensity and userdata are both optional. Figure out if they need to be read.
-	// The only way to do this is to compare the data record length by data format
-	recLengths := [4][4]int{{20, 18, 19, 17}, {28, 26, 27, 25}, {26, 24, 25, 23}, {34, 32, 33, 31}}
-
-	if las.Header.PointRecordLength == recLengths[las.Header.PointFormatID][0] {
-		las.usePointIntensity = true
-		las.usePointUserdata = true
-	} else if las.Header.PointRecordLength == recLengths[las.Header.PointFormatID][1] {
-		las.usePointIntensity = false
-		las.usePointUserdata = true
-	} else if las.Header.PointRecordLength == recLengths[las.Header.PointFormatID][2] {
-		las.usePointIntensity = true
-		las.usePointUserdata = false
-	} else if las.Header.PointRecordLength == recLengths[las.Header.PointFormatID][3] {
-		las.usePointIntensity = false
-		las.usePointUserdata = false
-	}
+    // The LAS Specifications state that:
+	// " Point data items that are not ‘Required’ must be set to
+	// the equivalent of zero for the data type (e.g. 0.0 for floating types, null for ASCII, 0 for integers)."
+	//
+	// In this context this means that basically the intensity/user data field is always present just with zero value.
+	// As such the corresponding bytes are always considered when parsing the payload
+	// The entire logic will probably need to be rewritten from scratch based on the
+	// las file format specifications rather than bugfixing the original las read library logic
+	// imported and used in this project.
 
 	numCPUs := runtime.NumCPU()
 	var wg sync.WaitGroup
@@ -137,10 +129,8 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 				offset += 4
 
 				var R, G, B, Intensity, Classification uint8
-				if las.usePointIntensity {
-					Intensity = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / 256)
-					offset += 2
-				}
+				Intensity = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / 256)
+				offset += 2
 				//p.BitField = PointBitField{Value: b[offset]}
 				offset++
 				//p.ClassBitField = ClassificationBitField{Value: b[offset]}
@@ -148,10 +138,8 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 				offset++
 				// p.ScanAngle = int8(b[offset])
 				offset++
-				if las.usePointUserdata {
-					// p.UserData = b[offset]
-					offset++
-				}
+				// point user data flag:
+				offset++
 				// p.PointSourceID = binary.LittleEndian.Uint16(b[offset : offset+2])
 				offset += 2
 
@@ -175,6 +163,7 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 					offset += 2
 					// las.rgbData[i] = rgb
 				}
+				// TODO: Add support for other point formats with RGB color components
 				lasFileLoader.Tree.AddPoint(&geometry.Coordinate{X: X, Y: Y, Z: Z}, R, G, B, Intensity, Classification, inSrid)
 				// las.pointDataOctElement[i] = elem
 			}
