@@ -93,7 +93,7 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 		// return err
 	}
 
-    // The LAS Specifications state that:
+	// The LAS Specifications state that:
 	// " Point data items that are not ‘Required’ must be set to
 	// the equivalent of zero for the data type (e.g. 0.0 for floating types, null for ASCII, 0 for integers)."
 	//
