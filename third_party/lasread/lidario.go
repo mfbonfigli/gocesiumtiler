@@ -385,8 +385,9 @@ func (las *LasFile) read() error {
 func (las *LasFile) readHeader() error {
 	las.Lock()
 	defer las.Unlock()
-	b := make([]byte, 243)
-	if _, err := las.f.ReadAt(b[0:243], 0); err != nil && err != io.EOF {
+	// For 1.4 set max length
+	b := make([]byte, 375)
+	if _, err := las.f.ReadAt(b[0:375], 0); err != nil && err != io.EOF {
 		return err
 	}
 
@@ -479,8 +480,23 @@ func (las *LasFile) readHeader() error {
 	offset += 8
 	las.Header.MinZ = math.Float64frombits(binary.LittleEndian.Uint64(b[offset : offset+8]))
 	offset += 8
-	if las.Header.VersionMajor == 1 && las.Header.VersionMinor == 3 {
+	if las.Header.VersionMajor == 1 && las.Header.VersionMinor >= 3 {
 		las.Header.WaveformDataStart = binary.LittleEndian.Uint64(b[offset : offset+8])
+		offset += 8
+		las.Header.StartOfFirstExtendedVariableLengthRecord = binary.LittleEndian.Uint64(b[offset : offset+8])
+		offset += 8
+		las.Header.NumberOfExtendedVariableLengthRecords = binary.LittleEndian.Uint32(b[offset : offset+4])
+		offset += 4
+		las.Header.NumberOfPointRecords = binary.LittleEndian.Uint64(b[offset : offset+8])
+		offset += 8
+		for i := 0; i < 15; i++ {
+			las.Header.NumberOfPointsByReturn[i] = binary.LittleEndian.Uint64(b[offset : offset+8])
+			offset += 8
+		}
+	}
+
+	if las.Header.NumberPoints < 1 {
+		las.Header.NumberPoints = int(las.Header.NumberOfPointRecords)
 	}
 
 	return nil
@@ -1410,40 +1426,44 @@ func (las *LasFile) PrintGeokeys() string {
 
 // LasHeader is a LAS file header structure.
 type LasHeader struct {
-	FileSignature        string
-	FileSourceID         int
-	GlobalEncoding       GlobalEncodingField
-	ProjectID1           int
-	ProjectID2           int
-	ProjectID3           int
-	ProjectID4           [8]byte
-	VersionMajor         byte
-	VersionMinor         byte
-	SystemID             string // 32 characters
-	GeneratingSoftware   string // 32 characters
-	FileCreationDay      int
-	FileCreationYear     int
-	HeaderSize           int
-	OffsetToPoints       int
-	NumberOfVLRs         int
-	PointFormatID        byte
-	PointRecordLength    int
-	NumberPoints         int
-	NumberPointsByReturn [5]int
-	XScaleFactor         float64
-	YScaleFactor         float64
-	ZScaleFactor         float64
-	XOffset              float64
-	YOffset              float64
-	ZOffset              float64
-	MaxX                 float64
-	MinX                 float64
-	MaxY                 float64
-	MinY                 float64
-	MaxZ                 float64
-	MinZ                 float64
-	WaveformDataStart    uint64
-	projectIDUsed        bool
+	FileSignature                            string
+	FileSourceID                             int
+	GlobalEncoding                           GlobalEncodingField
+	ProjectID1                               int
+	ProjectID2                               int
+	ProjectID3                               int
+	ProjectID4                               [8]byte
+	VersionMajor                             byte
+	VersionMinor                             byte
+	SystemID                                 string // 32 characters
+	GeneratingSoftware                       string // 32 characters
+	FileCreationDay                          int
+	FileCreationYear                         int
+	HeaderSize                               int
+	OffsetToPoints                           int
+	NumberOfVLRs                             int
+	PointFormatID                            byte
+	PointRecordLength                        int
+	NumberPoints                             int
+	NumberPointsByReturn                     [5]int
+	XScaleFactor                             float64
+	YScaleFactor                             float64
+	ZScaleFactor                             float64
+	XOffset                                  float64
+	YOffset                                  float64
+	ZOffset                                  float64
+	MaxX                                     float64
+	MinX                                     float64
+	MaxY                                     float64
+	MinY                                     float64
+	MaxZ                                     float64
+	MinZ                                     float64
+	WaveformDataStart                        uint64
+	StartOfFirstExtendedVariableLengthRecord uint64
+	NumberOfExtendedVariableLengthRecords    uint32
+	NumberOfPointRecords                     uint64
+	NumberOfPointsByReturn                   [15]uint64
+	projectIDUsed                            bool
 }
 
 func (h LasHeader) String() string {
