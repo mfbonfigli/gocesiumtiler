@@ -88,7 +88,7 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 	}
 
 	// Estimate how many bytes are used to store the points
-	pointsLength := las.Header.NumberPoints * las.Header.PointRecordLength
+	pointsLength := las.Header.NumberPoints*las.Header.PointRecordLength + 5
 	b := make([]byte, pointsLength)
 	if _, err := las.f.ReadAt(b, int64(las.Header.OffsetToPoints)); err != nil && err != io.EOF {
 		// return err
@@ -116,7 +116,6 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 		wg.Add(1)
 		go func(pointSt, pointEnd int) {
 			defer wg.Done()
-
 			var offset int
 			// var p PointRecord0
 			for i := pointSt; i <= pointEnd; i++ {
@@ -134,6 +133,9 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 				offset += 2
 				//p.BitField = PointBitField{Value: b[offset]}
 				offset++
+				if las.Header.PointFormatID >= 6 {
+					offset++
+				}
 				//p.ClassBitField = ClassificationBitField{Value: b[offset]}
 				Classification = b[offset]
 				offset++
@@ -146,11 +148,11 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 
 				// las.pointData[i] = p
 
-				if las.Header.PointFormatID == 1 || las.Header.PointFormatID == 3 {
+				if las.Header.PointFormatID == 1 || las.Header.PointFormatID >= 3 {
 					// las.gpsData[i] = math.Float64frombits(binary.LittleEndian.Uint64(b[offset : offset+8]))
 					offset += 8
 				}
-				if las.Header.PointFormatID == 2 || las.Header.PointFormatID == 3 {
+				if las.Header.PointFormatID == 2 || las.Header.PointFormatID == 3 || las.Header.PointFormatID == 5 || las.Header.PointFormatID == 8 || las.Header.PointFormatID == 10 {
 					var conversionFactor = uint16(256)
 					if eightBitColor {
 						conversionFactor = uint16(1)
