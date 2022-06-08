@@ -2273,6 +2273,8 @@ EPSG:4993	EPSG:4993: Lao 1997	+proj=longlat +ellps=krass +towgs84=44.585,-131.21
 EPSG:4995	EPSG:4995: PRS92	+proj=longlat +ellps=clrk66 +towgs84=-127.62,-67.24,-47.04,-3.068,-4.903,-1.578,-0.21864069462192215 +no_defs 
 EPSG:4997	EPSG:4997: MAGNA-SIRGAS	+proj=longlat +ellps=GRS80 +towgs84=0.0,0.0,0.0,0.0,0.0,0.0,0.0 +no_defs 
 EPSG:4999	EPSG:4999: RGPF	+proj=longlat +ellps=GRS80 +towgs84=0.072,-0.507,-0.245,-0.0183,-0.0003,0.007,-0.001918262698097996 +no_defs 
+EPSG:6666	EPSG:6666: JGD2011 Geocentric	+proj=geocent +ellps=GRS80 +units=m +no_defs 
+EPSG:6668	EPSG:6668: JGD2011	 +proj=longlat +ellps=GRS80 +no_defs 
 EPSG:6669	EPSG:6669: JGD2011 / Japan Plane Rectangular CS I	+proj=tmerc +lat_0=33 +lon_0=129.5 +k=0.9999 +x_0=0 +y_0=0 +ellps=GRS80 +units=m +no_defs 
 EPSG:6670	EPSG:6670: JGD2011 / Japan Plane Rectangular CS II	+proj=tmerc +lat_0=33 +lon_0=131 +k=0.9999 +x_0=0 +y_0=0 +ellps=GRS80 +units=m +no_defs 
 EPSG:6671	EPSG:6671: JGD2011 / Japan Plane Rectangular CS III	+proj=tmerc +lat_0=36 +lon_0=132.1666666666667 +k=0.9999 +x_0=0 +y_0=0 +ellps=GRS80 +units=m +no_defs 
@@ -2292,6 +2294,11 @@ EPSG:6684	EPSG:6684: JGD2011 / Japan Plane Rectangular CS XVI	+proj=tmerc +lat_0
 EPSG:6685	EPSG:6685: JGD2011 / Japan Plane Rectangular CS XVII	+proj=tmerc +lat_0=26 +lon_0=131 +k=0.9999 +x_0=0 +y_0=0 +ellps=GRS80 +units=m +no_defs 
 EPSG:6686	EPSG:6686: JGD2011 / Japan Plane Rectangular CS XVIII	+proj=tmerc +lat_0=20 +lon_0=136 +k=0.9999 +x_0=0 +y_0=0 +ellps=GRS80 +units=m +no_defs 
 EPSG:6687	EPSG:6687: JGD2011 / Japan Plane Rectangular CS XIX	+proj=tmerc +lat_0=26 +lon_0=154 +k=0.9999 +x_0=0 +y_0=0 +ellps=GRS80 +units=m +no_defs 
+EPSG:6688	EPSG:6688: JGD2011 / UTM zone 51N	+proj=utm +zone=51 +ellps=GRS80 +units=m +no_defs 
+EPSG:6689	EPSG:6689: JGD2011 / UTM zone 52N	+proj=utm +zone=52 +ellps=GRS80 +units=m +no_defs 
+EPSG:6690	EPSG:6690: JGD2011 / UTM zone 53N	+proj=utm +zone=53 +ellps=GRS80 +units=m +no_defs 
+EPSG:6691	EPSG:6691: JGD2011 / UTM zone 54N	+proj=utm +zone=54 +ellps=GRS80 +units=m +no_defs 
+EPSG:6692	EPSG:6692: JGD2011 / UTM zone 55N	+proj=utm +zone=55 +ellps=GRS80 +units=m +no_defs 
 EPSG:20004	EPSG:20004: Pulkovo 1995 / Gauss-Kruger zone 4	+proj=tmerc +lat_0=0 +lon_0=21 +k=1 +x_0=4500000 +y_0=0 +ellps=krass +units=m +no_defs 
 EPSG:20005	EPSG:20005: Pulkovo 1995 / Gauss-Kruger zone 5	+proj=tmerc +lat_0=0 +lon_0=27 +k=1 +x_0=5500000 +y_0=0 +ellps=krass +units=m +no_defs 
 EPSG:20006	EPSG:20006: Pulkovo 1995 / Gauss-Kruger zone 6	+proj=tmerc +lat_0=0 +lon_0=33 +k=1 +x_0=6500000 +y_0=0 +ellps=krass +units=m +no_defs 
