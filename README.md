@@ -34,6 +34,7 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 ## Changelog
 ##### Version 1.2.3
 * Added experimental support for LAS 1.4
+* Added support for additional EPSG codes in the range EPSG:6666 to EPSG:6692
 
 ##### Version 1.2.2
 * Fixed a bug in parsing RGB colors for LAS files having point records of non standard length.
