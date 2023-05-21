@@ -24,19 +24,20 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
-	"github.com/mfbonfigli/gocesiumtiler/pkg"
-	"github.com/mfbonfigli/gocesiumtiler/pkg/algorithm_manager/std_algorithm_manager"
-	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
+	"github.com/mfbonfigli/gocesiumtiler/pkg"
+	"github.com/mfbonfigli/gocesiumtiler/pkg/algorithm_manager/std_algorithm_manager"
+	"github.com/mfbonfigli/gocesiumtiler/tools"
 	// "github.com/pkg/profile" // enable for profiling
 )
 
-const VERSION = "1.2.2"
+const VERSION = "1.2.3"
 
 const logo = `
                            _                 _   _ _

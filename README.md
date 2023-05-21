@@ -32,6 +32,9 @@ propeties named `INTENSITY` and `CLASSIFICATION`.
 
 
 ## Changelog
+##### Version 1.2.3
+* Added experimental support for LAS 1.4
+
 ##### Version 1.2.2
 * Fixed a bug in parsing RGB colors for LAS files having point records of non standard length.
 * Fixed a bug when processing multiple files (this was not really fixed in the previous version).
@@ -73,6 +76,8 @@ When launching a build with `go build` go modules will retrieve the required dep
 
 As the project and its dependencies make use of C code, under windows you should also have GCC compiler installed and available
 in the PATH environment variable. More information on cgo compiler are available [here](https://github.com/golang/go/wiki/cgo).
+
+Additionally make sure CGO is enabled via `go env CGO_ENABLED`. CGO_ENABLED environment variable should be set to 1.
 
 Under linux you will have to have `gcc` installed. Also make sure go is configured to pass the correct flags to gcc. In particular if you encounter compilation errors similar to `undefined reference to 'sqrt'` it means that it is not linking the standard math libraries. A way to fix this is to add `-lm` to the `CGO_LDFLAGS`environment variable, for example by running `export CGO_LDFLAGS="-g -O2 -lm"`.
 

@@ -15,6 +15,64 @@ import (
 	"sync"
 )
 
+var recLengths = [11][4]int{
+	{20, 18, 19, 17}, // Point format 0
+	{28, 26, 27, 25}, // Point format 1
+	{26, 24, 25, 23}, // Point format 2
+	{34, 32, 33, 31}, // Point format 3
+	{57, 55, 56, 54}, // Point format 4
+	{63, 61, 62, 60}, // Point format 5
+	{30, 28, 29, 27}, // Point format 6
+	{36, 34, 35, 33}, // Point format 7
+	{38, 36, 37, 35}, // Point format 8
+	{59, 57, 58, 56}, // Point format 9
+	{67, 65, 66, 64}, // Point format 10
+}
+
+var xyzOffets = [11][3]int{
+	{0, 4, 8}, // Point format 0
+	{0, 4, 8}, // Point format 1
+	{0, 4, 8}, // Point format 2
+	{0, 4, 8}, // Point format 3
+	{0, 4, 8}, // Point format 4
+	{0, 4, 8}, // Point format 5
+	{0, 4, 8}, // Point format 6
+	{0, 4, 8}, // Point format 7
+	{0, 4, 8}, // Point format 8
+	{0, 4, 8}, // Point format 9
+	{0, 4, 8}, // Point format 10
+}
+
+var rgbOffets = [11][]int{
+	nil, 			// Point format 0
+	nil, 			// Point format 1
+	{20, 22, 24}, 	// Point format 2
+	{28, 30, 32}, 	// Point format 3
+	nil, 			// Point format 4
+	{28, 30, 32}, 	// Point format 5
+	nil, 			// Point format 6
+	{30, 32, 34}, 	// Point format 7
+	{30, 32, 34}, 	// Point format 8
+	nil, 			// Point format 9
+	{30, 32, 34}, 	// Point format 10
+}
+
+// intensity offset is always 12
+
+var classificationOffets = [11]int{
+	15, // Point format 0
+	15, // Point format 1
+	15,	// Point format 2
+	15, // Point format 3
+	15, // Point format 4
+	15, // Point format 5
+	16, // Point format 6
+	16, // Point format 7
+	16, // Point format 8
+	16,	// Point format 9
+	16, // Point format 10
+}
+
 type LasFileLoader struct {
 	Tree octree.ITree
 }
@@ -50,7 +108,7 @@ func (lasFileLoader *LasFileLoader) readForOctree(inSrid int, eightBitColor bool
 		return err
 	}
 	if las.fileMode != "rh" {
-		recLengths := [4][4]int{{20, 18, 19, 17}, {28, 26, 27, 25}, {26, 24, 25, 23}, {34, 32, 33, 31}}
+
 
 		if las.Header.PointRecordLength == recLengths[las.Header.PointFormatID][0] {
 			las.usePointIntensity = true
@@ -120,50 +178,7 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 			// var p PointRecord0
 			for i := pointSt; i <= pointEnd; i++ {
 				offset = i * las.Header.PointRecordLength
-				// p := PointRecord0{}
-				X := float64(int32(binary.LittleEndian.Uint32(b[offset:offset+4])))*las.Header.XScaleFactor + las.Header.XOffset
-				offset += 4
-				Y := float64(int32(binary.LittleEndian.Uint32(b[offset:offset+4])))*las.Header.YScaleFactor + las.Header.YOffset
-				offset += 4
-				Z := float64(int32(binary.LittleEndian.Uint32(b[offset:offset+4])))*las.Header.ZScaleFactor + las.Header.ZOffset
-				offset += 4
-
-				var R, G, B, Intensity, Classification uint8
-				Intensity = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / 256)
-				offset += 2
-				//p.BitField = PointBitField{Value: b[offset]}
-				offset++
-				//p.ClassBitField = ClassificationBitField{Value: b[offset]}
-				Classification = b[offset]
-				offset++
-				// p.ScanAngle = int8(b[offset])
-				offset++
-				// point user data flag:
-				offset++
-				// p.PointSourceID = binary.LittleEndian.Uint16(b[offset : offset+2])
-				offset += 2
-
-				// las.pointData[i] = p
-
-				if las.Header.PointFormatID == 1 || las.Header.PointFormatID == 3 {
-					// las.gpsData[i] = math.Float64frombits(binary.LittleEndian.Uint64(b[offset : offset+8]))
-					offset += 8
-				}
-				if las.Header.PointFormatID == 2 || las.Header.PointFormatID == 3 {
-					var conversionFactor = uint16(256)
-					if eightBitColor {
-						conversionFactor = uint16(1)
-					}
-					//rgb := RgbData{}
-					R = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / conversionFactor)
-					offset += 2
-					G = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / conversionFactor)
-					offset += 2
-					B = uint8(binary.LittleEndian.Uint16(b[offset:offset+2]) / conversionFactor)
-					offset += 2
-					// las.rgbData[i] = rgb
-				}
-				// TODO: Add support for other point formats with RGB color components
+				X, Y, Z, R, G, B, Intensity, Classification := readPoint(&las.Header, b, offset, eightBitColor)
 				lasFileLoader.Tree.AddPoint(&geometry.Coordinate{X: X, Y: Y, Z: Z}, R, G, B, Intensity, Classification, inSrid)
 				// las.pointDataOctElement[i] = elem
 			}
@@ -172,4 +187,40 @@ func (lasFileLoader *LasFileLoader) readPointsOctElem(inSrid int, eightBitColor 
 	}
 	wg.Wait()
 	return nil
+}
+
+
+func readPoint(header *LasHeader, data []byte, offset int, eightBitColor bool) (float64, float64, float64, uint8, uint8, uint8, uint8, uint8) {
+	var x, y, z float64
+	var r, g, b uint8
+	var intensity uint8
+	var classification uint8
+	xyzOffsetValues := xyzOffets[header.PointFormatID]
+	xOffset := xyzOffsetValues[0] + offset
+	yOffset := xyzOffsetValues[1] + offset
+	zOffset := xyzOffsetValues[2] + offset
+	x = float64(int32(binary.LittleEndian.Uint32(data[xOffset:xOffset+4])))*header.XScaleFactor + header.XOffset
+	y = float64(int32(binary.LittleEndian.Uint32(data[yOffset:yOffset+4])))*header.YScaleFactor + header.YOffset
+	z = float64(int32(binary.LittleEndian.Uint32(data[zOffset:zOffset+4])))*header.ZScaleFactor + header.ZOffset
+
+	rgbOffsetValues := rgbOffets[header.PointFormatID]
+	if rgbOffsetValues != nil {
+		rOffset := rgbOffsetValues[0] + offset
+		gOffset := rgbOffsetValues[1] + offset
+		bOffset := rgbOffsetValues[2] + offset
+		var conversionFactor = uint16(256)
+		if eightBitColor {
+			conversionFactor = uint16(1)
+		}
+
+		r = uint8(binary.LittleEndian.Uint16(data[rOffset:rOffset+2]) / conversionFactor)
+		g = uint8(binary.LittleEndian.Uint16(data[gOffset:gOffset+2]) / conversionFactor)
+		b = uint8(binary.LittleEndian.Uint16(data[bOffset:bOffset+2]) / conversionFactor)
+	}
+	intensityOffset := 12 + offset
+	intensity = uint8(binary.LittleEndian.Uint16(data[intensityOffset:intensityOffset+2]) / 256)
+	classificationOffset := classificationOffets[header.PointFormatID] + offset
+	classification = data[classificationOffset]
+
+	return x,y,z,r,g,b,intensity,classification
 }

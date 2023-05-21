@@ -385,8 +385,8 @@ func (las *LasFile) read() error {
 func (las *LasFile) readHeader() error {
 	las.Lock()
 	defer las.Unlock()
-	b := make([]byte, 243)
-	if _, err := las.f.ReadAt(b[0:243], 0); err != nil && err != io.EOF {
+	b := make([]byte, 383)
+	if _, err := las.f.ReadAt(b[0:383], 0); err != nil && err != io.EOF {
 		return err
 	}
 
@@ -448,9 +448,11 @@ func (las *LasFile) readHeader() error {
 	offset++
 	las.Header.PointRecordLength = int(binary.LittleEndian.Uint16(b[offset : offset+2]))
 	offset += 2
+	// this might be zero, it's a legacy field in LAS 1.4
 	las.Header.NumberPoints = int(binary.LittleEndian.Uint32(b[offset : offset+4]))
 	offset += 4
 	for i := 0; i < 5; i++ {
+		// this might be zero, it's a legacy field in LAS 1.4
 		las.Header.NumberPointsByReturn[i] = int(binary.LittleEndian.Uint32(b[offset : offset+4]))
 		offset += 4
 	}
@@ -479,10 +481,22 @@ func (las *LasFile) readHeader() error {
 	offset += 8
 	las.Header.MinZ = math.Float64frombits(binary.LittleEndian.Uint64(b[offset : offset+8]))
 	offset += 8
-	if las.Header.VersionMajor == 1 && las.Header.VersionMinor == 3 {
+	if las.Header.VersionMajor == 1 && (las.Header.VersionMinor == 3 || las.Header.VersionMinor == 4) {
 		las.Header.WaveformDataStart = binary.LittleEndian.Uint64(b[offset : offset+8])
+		offset += 8
 	}
+	if las.Header.VersionMajor == 1 && las.Header.VersionMinor == 4 {
+		// Skip start of first Extended Variable Length and number of EVLR
+		offset += 12
+		// For Las 1.4 get the number of points from the new fields
 
+		las.Header.NumberPoints = int(binary.LittleEndian.Uint32(b[offset : offset+8]))
+		offset += 8
+		for i := 0; i < 15; i++ {
+			las.Header.NumberPointsByReturn[i] = int(binary.LittleEndian.Uint32(b[offset : offset+8]))
+			offset += 8
+		}
+	}
 	return nil
 }
 
@@ -1429,7 +1443,7 @@ type LasHeader struct {
 	PointFormatID        byte
 	PointRecordLength    int
 	NumberPoints         int
-	NumberPointsByReturn [5]int
+	NumberPointsByReturn [15]int
 	XScaleFactor         float64
 	YScaleFactor         float64
 	ZScaleFactor         float64
