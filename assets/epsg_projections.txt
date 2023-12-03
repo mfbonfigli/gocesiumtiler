@@ -1762,6 +1762,19 @@ EPSG:3821	EPSG:3821: TWD67	+proj=longlat +ellps=aust_SA +no_defs
 EPSG:3823	EPSG:3823: TWD97	+proj=longlat +ellps=GRS80 +towgs84=0.0,0.0,0.0,0.0,0.0,0.0,0.0 +no_defs 
 EPSG:3824	EPSG:3824: TWD97	+proj=longlat +ellps=GRS80 +towgs84=0.0,0.0,0.0,0.0,0.0,0.0,0.0 +no_defs 
 EPSG:3857	EPSG:3824: 3857	+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs
+EPSG:3873	EPSG:3873: ETRS89 / ETRS-GK19FIN	+proj=tmerc +lat_0=0 +lon_0=19 +k=1 +x_0=19500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3874	EPSG:3874: ETRS89 / ETRS-GK20FIN	+proj=tmerc +lat_0=0 +lon_0=20 +k=1 +x_0=20500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3875	EPSG:3875: ETRS89 / ETRS-GK21FIN	+proj=tmerc +lat_0=0 +lon_0=21 +k=1 +x_0=21500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3876	EPSG:3876: ETRS89 / ETRS-GK22FIN	+proj=tmerc +lat_0=0 +lon_0=22 +k=1 +x_0=22500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3877	EPSG:3877: ETRS89 / ETRS-GK23FIN	+proj=tmerc +lat_0=0 +lon_0=23 +k=1 +x_0=23500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3878	EPSG:3878: ETRS89 / ETRS-GK24FIN	+proj=tmerc +lat_0=0 +lon_0=24 +k=1 +x_0=24500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3879	EPSG:3879: ETRS89 / ETRS-GK25FIN	+proj=tmerc +lat_0=0 +lon_0=25 +k=1 +x_0=25500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3880	EPSG:3880: ETRS89 / ETRS-GK26FIN	+proj=tmerc +lat_0=0 +lon_0=26 +k=1 +x_0=26500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3881	EPSG:3881: ETRS89 / ETRS-GK27FIN	+proj=tmerc +lat_0=0 +lon_0=27 +k=1 +x_0=27500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3882	EPSG:3882: ETRS89 / ETRS-GK28FIN	+proj=tmerc +lat_0=0 +lon_0=28 +k=1 +x_0=28500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3883	EPSG:3883: ETRS89 / ETRS-GK29FIN	+proj=tmerc +lat_0=0 +lon_0=29 +k=1 +x_0=29500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3884	EPSG:3884: ETRS89 / ETRS-GK30FIN	+proj=tmerc +lat_0=0 +lon_0=30 +k=1 +x_0=30500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
+EPSG:3885	EPSG:3885: ETRS89 / ETRS-GK31FIN	+proj=tmerc +lat_0=0 +lon_0=31 +k=1 +x_0=31500000 +y_0=0 +ellps=GRS80 +units=m +no_defs
 EPSG:3920	EPSG:3920: Puerto Rico / UTM zone 20N	+proj=utm +zone=20 +ellps=clrk66 +towgs84=11,72,-101,0,0,0,0 +units=m +no_defs
 EPSG:3942	EPSG:3942: RGF93 / CC42	+proj=lcc +lat_1=41.25 +lat_2=42.75 +lat_0=42 +lon_0=3 +x_0=1700000 +y_0=1200000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs 
 EPSG:3943	EPSG:3943: RGF93 / CC43	+proj=lcc +lat_1=42.25 +lat_2=43.75 +lat_0=43 +lon_0=3 +x_0=1700000 +y_0=2200000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs 
