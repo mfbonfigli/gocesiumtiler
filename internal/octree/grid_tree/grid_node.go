@@ -2,13 +2,16 @@ package grid_tree
 
 import "C"
 import (
+	"fmt"
+	"math"
+	"math/rand"
+	"sync"
+	"sync/atomic"
+
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
-	"math"
-	"sync"
-	"sync/atomic"
 )
 
 // Models a node of the octree, which can either be a leaf (a node without children nodes) or not.
@@ -16,6 +19,7 @@ import (
 // It divides its bounding box in gridCells and only stores points retained by these cells, propagating the ones rejected
 // by the cells to its children which will have smaller cells.
 type GridNode struct {
+	id                  string
 	root                bool
 	parent              octree.INode
 	boundingBox         *geometry.BoundingBox
@@ -32,9 +36,10 @@ type GridNode struct {
 }
 
 // Instantiates a new GridNode
-func NewGridNode(parent octree.INode, boundingBox *geometry.BoundingBox, maxCellSize float64, minCellSize float64, root bool) octree.INode {
+func NewGridNode(parent octree.INode, boundingBox *geometry.BoundingBox, maxCellSize float64, minCellSize float64, root bool, id string) octree.INode {
 	node := GridNode{
-		parent:              parent,						   // the parent node
+		id:                  id,                               // unique identifier string
+		parent:              parent,                           // the parent node
 		root:                root,                             // if the node is the tree root
 		boundingBox:         boundingBox,                      // bounding box of the node
 		cellSize:            maxCellSize,                      // max size setting to use for gridCells
@@ -96,7 +101,13 @@ func (n *GridNode) GetChildren() [8]octree.INode {
 }
 
 func (n *GridNode) GetPoints() []*data.Point {
-	return n.points
+	// gets the points from the underlying cells
+	var points []*data.Point
+	for _, cell := range n.cells {
+		points = append(points, cell.getPoints()...)
+	}
+
+	return points
 }
 
 func (n *GridNode) TotalNumberOfPoints() int64 {
@@ -125,7 +136,7 @@ func (n *GridNode) ComputeGeometricError() float64 {
 		var w = math.Abs(n.boundingBox.Xmax - n.boundingBox.Xmin)
 		var l = math.Abs(n.boundingBox.Ymax - n.boundingBox.Ymin)
 		var h = math.Abs(n.boundingBox.Zmax - n.boundingBox.Zmin)
-		return math.Sqrt(w * w + l * l + h * h)
+		return math.Sqrt(w*w + l*l + h*h)
 	}
 	// geometric error is estimated as the maximum possible distance between two points lying in the cell
 	return n.cellSize * math.Sqrt(3) * 2
@@ -150,18 +161,23 @@ func getOctantFromElement(element *data.Point, bbox *geometry.BoundingBox) uint8
 // and recursively builds the points of its children.
 // sets the slice reference to nil to allow GC to happen as the cells won't be used anymore
 func (n *GridNode) BuildPoints() {
-	var points []*data.Point
-	for _, cell := range n.cells {
-		points = append(points, cell.points...)
-	}
-	n.points = points
-	n.cells = nil
-
-	for _, child := range n.children {
-		if child != nil {
-			child.(*GridNode).BuildPoints()
+	// TODO: remove the commented block
+	// there is no need to build points anymore for this data structure
+	// as getPoints returns them lazily on-demand
+	/*
+		var points []*data.Point
+		for _, cell := range n.cells {
+			points = append(points, cell.points...)
 		}
-	}
+		n.points = points
+		n.cells = nil
+
+		for _, child := range n.children {
+			if child != nil {
+				child.(*GridNode).BuildPoints()
+			}
+		}
+	*/
 }
 
 func (n *GridNode) GetParent() octree.INode {
@@ -192,15 +208,27 @@ func (n *GridNode) getPointGridCellIndex(point *data.Point) *gridIndex {
 	}
 }
 
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
+
 func (n *GridNode) initializeGridCell(index *gridIndex) *gridCell {
 	n.Lock()
-
 	out := n.cells[*index]
 	if out == nil {
 		out = &gridCell{
 			index:         *index,
 			size:          n.cellSize,
 			sizeThreshold: n.minCellSize,
+			storage: &diskBackedCellStorage{ // change to memoryBasedCellStorage to have a fully in memory tree
+				cellTempFileName: fmt.Sprintf("/tmp/cells/%d-%d-%d-%0.9f-%s", index.x, index.y, index.z, n.cellSize, RandStringBytes(20)),
+			},
 		}
 		n.cells[*index] = out
 	}
@@ -236,7 +264,7 @@ func (n *GridNode) initializeChildren() {
 	n.Lock()
 	for i := uint8(0); i < 8; i++ {
 		if n.children[i] == nil {
-			n.children[i] = NewGridNode(n, getOctantBoundingBox(&i, n.boundingBox), n.cellSize/2.0, n.minCellSize, false)
+			n.children[i] = NewGridNode(n, getOctantBoundingBox(&i, n.boundingBox), n.cellSize/2.0, n.minCellSize, false, fmt.Sprintf("%s-%d", n.id, i))
 		}
 	}
 	n.initialized = true

@@ -1,20 +1,26 @@
 package grid_tree
 
 import (
-	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"math"
 	"sync"
+
+	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 )
 
 // Data structure that accepts points and stores just the one closest to its center, or if the side is too small,
 // all the points. It assumes that coordinates are expressed in a metric cartesian system.
 type gridCell struct {
-	index              gridIndex     // unique spatial index of the cell
-	size               float64       // length of the side of the cell (cubic cell)
-	points             []*data.Point // points stored in the cell
-	sizeThreshold      float64       // if size is below sizeThreshold store all points in the cell instead of just the one closest to the center
-	distanceFromCenter float64       // distance from center of current point at index 0
+	index              gridIndex   // unique spatial index of the cell
+	size               float64     // length of the side of the cell (cubic cell)
+	storage            cellStorage // storage for the points stored in the cell
+	sizeThreshold      float64     // if size is below sizeThreshold store all points in the cell instead of just the one closest to the center
+	distanceFromCenter float64     // distance from center of current point at index 0
 	sync.RWMutex
+}
+
+// returns the points stored in this grid cell
+func (gc *gridCell) getPoints() []*data.Point {
+	return gc.storage.getPoints()
 }
 
 // returns the spatial index component associated to a given dimension (e.g. X or Y or Z) coordinate value
@@ -31,15 +37,8 @@ func (gc *gridCell) getCellCenter() (float64, float64, float64) {
 
 // submits a point to the cell, eventually returning a pointer to the point pushed out.
 func (gc *gridCell) pushPoint(point *data.Point) *data.Point {
-	if gc.points == nil {
-		gc.storeFirstPoint(point)
-		return nil
-	}
-
 	if gc.isSizeBelowThreshold() {
-		gc.Lock()
-		gc.points = append(gc.points, point)
-		gc.Unlock()
+		gc.storage.store(point)
 		return nil
 	}
 
@@ -51,28 +50,23 @@ func (gc *gridCell) isSizeBelowThreshold() bool {
 	return gc.size < gc.sizeThreshold
 }
 
-// sets the points slice to a new slice containing the input point and stores its distanceFromCenter
-func (gc *gridCell) storeFirstPoint(point *data.Point) {
-	gc.Lock()
-	gc.points = []*data.Point{point}
-	gc.distanceFromCenter = gc.getDistanceFromCenter(point)
-	gc.Unlock()
-}
-
 // takes the input point and compares its distance from the center to the one in the points array,
 // storing in the array only the one closest to the center and returning the other, rejected and farthest from the center, one
 func (gc *gridCell) storeClosestPointAndReturnFarthestOne(point *data.Point) *data.Point {
 	distance := gc.getDistanceFromCenter(point)
-
-	if distance < gc.distanceFromCenter {
-		gc.Lock()
-		oldPoint := gc.points[0]
-		gc.points[0] = point
+	gc.RLock()
+	if !gc.storage.isEmpty() && distance >= gc.distanceFromCenter {
+		gc.RUnlock()
+		return point
+	}
+	gc.RUnlock()
+	gc.Lock()
+	defer gc.Unlock()
+	if gc.storage.isEmpty() || distance < gc.distanceFromCenter {
+		oldPoint := gc.storage.storeAndPush(point)
 		gc.distanceFromCenter = distance
-		gc.Unlock()
 		return oldPoint
 	}
-
 	return point
 }
 

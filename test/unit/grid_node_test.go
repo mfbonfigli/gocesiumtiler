@@ -1,11 +1,13 @@
 package unit
 
 import (
+	"math"
+	"reflect"
+	"testing"
+
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree/grid_tree"
-	"math"
-	"testing"
 )
 
 func TestGridNodeAddDataPointSinglePoint(t *testing.T) {
@@ -15,6 +17,7 @@ func TestGridNodeAddDataPointSinglePoint(t *testing.T) {
 		5.0,
 		1.0,
 		true,
+		"",
 	)
 
 	point := data.NewPoint(14, 41, 1, 2, 3, 4, 5, 6)
@@ -26,7 +29,7 @@ func TestGridNodeAddDataPointSinglePoint(t *testing.T) {
 		t.Fatalf("One point expected, %d returned", len(node.GetPoints()))
 	}
 
-	if node.GetPoints()[0] != point {
+	if !reflect.DeepEqual(node.GetPoints()[0], point) {
 		t.Errorf("Unexpected point data returned")
 	}
 
@@ -46,6 +49,7 @@ func TestGridNodeAddDataPointMultiplePoints(t *testing.T) {
 		10.0,
 		1.0,
 		true,
+		"",
 	)
 
 	point := data.NewPoint(11, 11, 1, 2, 3, 4, 5, 6)
@@ -62,7 +66,7 @@ func TestGridNodeAddDataPointMultiplePoints(t *testing.T) {
 		t.Fatalf("One point expected, %d returned", len(node.GetPoints()))
 	}
 
-	if node.GetPoints()[0] != point2 {
+	if !reflect.DeepEqual(node.GetPoints()[0], point2) {
 		t.Errorf("Unexpected point data returned")
 	}
 
@@ -82,6 +86,7 @@ func TestGridNodeGetInternalSrid(t *testing.T) {
 		5.0,
 		1.0,
 		true,
+		"",
 	)
 
 	if node.GetInternalSrid() != 3395 {
@@ -96,6 +101,7 @@ func TestGridNodeGetIsRootTrue(t *testing.T) {
 		5.0,
 		1.0,
 		true,
+		"",
 	)
 
 	if node.IsRoot() != true {
@@ -110,6 +116,7 @@ func TestGridNodeGetIsRootFalse(t *testing.T) {
 		5.0,
 		1.0,
 		false,
+		"",
 	)
 
 	if node.IsRoot() != false {
@@ -125,6 +132,7 @@ func TestGridNodeGetBoundingBoxRegion(t *testing.T) {
 		5.0,
 		1.0,
 		false,
+		"",
 	)
 
 	region, _ := node.GetBoundingBoxRegion(&mockCoordinateConverter{})
@@ -141,6 +149,7 @@ func TestGridNodeGetChildren(t *testing.T) {
 		5.0,
 		1.0,
 		true,
+		"",
 	)
 
 	point := data.NewPoint(14, 41, 1, 2, 3, 4, 5, 6)
@@ -186,6 +195,7 @@ func TestGridNodeGetPoints(t *testing.T) {
 		1.0,
 		1.0,
 		true,
+		"",
 	)
 
 	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)
@@ -219,6 +229,7 @@ func TestGridNodeGetTotalNumberOfPoints(t *testing.T) {
 		1.0,
 		1.0,
 		true,
+		"",
 	)
 
 	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)
@@ -244,6 +255,7 @@ func TestGridNodeGetNumberOfPoints(t *testing.T) {
 		1.0,
 		0.5,
 		true,
+		"",
 	)
 
 	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)
@@ -273,6 +285,7 @@ func TestGridNodeIsLeaf(t *testing.T) {
 		1.0,
 		0.5,
 		true,
+		"",
 	)
 
 	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)
@@ -299,6 +312,7 @@ func TestGridNodeIsInitialized(t *testing.T) {
 		1.0,
 		0.5,
 		true,
+		"",
 	)
 
 	if node.IsInitialized() {
@@ -320,6 +334,7 @@ func TestGridNodeComputeGeometricError(t *testing.T) {
 		1.0,
 		0.5,
 		false,
+		"",
 	)
 
 	expectedError := 1.0 * math.Sqrt(3) * 2
@@ -335,9 +350,10 @@ func TestRootGridNodeComputeGeometricError(t *testing.T) {
 		1.0,
 		0.5,
 		true,
+		"",
 	)
 
-	expectedError := 1.0 * math.Sqrt(4 + 1 + 1)
+	expectedError := 1.0 * math.Sqrt(4+1+1)
 	if node.ComputeGeometricError() != expectedError {
 		t.Errorf("Expected ComputeGeometricError %f, got %f", expectedError, node.ComputeGeometricError())
 	}
@@ -350,6 +366,7 @@ func TestGridNodeGetParent(t *testing.T) {
 		1.0,
 		0.5,
 		true,
+		"",
 	)
 
 	point := data.NewPoint(14.1, 41, 1, 2, 3, 4, 5, 6)
