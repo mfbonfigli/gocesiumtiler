@@ -2,13 +2,13 @@ package grid_tree
 
 import "C"
 import (
+	"math"
+	"sync"
+
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
-	"math"
-	"sync"
-	"sync/atomic"
 )
 
 // Models a node of the octree, which can either be a leaf (a node without children nodes) or not.
@@ -16,35 +16,23 @@ import (
 // It divides its bounding box in gridCells and only stores points retained by these cells, propagating the ones rejected
 // by the cells to its children which will have smaller cells.
 type GridNode struct {
-	root                bool
-	parent              octree.INode
-	boundingBox         *geometry.BoundingBox
-	children            [8]octree.INode
-	cells               map[gridIndex]*gridCell
-	points              []*data.Point
-	cellSize            float64
-	minCellSize         float64
-	totalNumberOfPoints int64
-	numberOfPoints      int32
-	leaf                int32
-	initialized         bool
+	parent      octree.INode
+	boundingBox *geometry.BoundingBox
+	children    [8]octree.INode
+	cells       map[gridIndex]*gridCell
+	cellSize    float64
+	minCellSize float64
 	sync.RWMutex
 }
 
 // Instantiates a new GridNode
-func NewGridNode(parent octree.INode, boundingBox *geometry.BoundingBox, maxCellSize float64, minCellSize float64, root bool) octree.INode {
+func NewGridNode(parent octree.INode, boundingBox *geometry.BoundingBox, maxCellSize float64, minCellSize float64) octree.INode {
 	node := GridNode{
-		parent:              parent,						   // the parent node
-		root:                root,                             // if the node is the tree root
-		boundingBox:         boundingBox,                      // bounding box of the node
-		cellSize:            maxCellSize,                      // max size setting to use for gridCells
-		minCellSize:         minCellSize,                      // min size setting to use for gridCells
-		points:              make([]*data.Point, 0),           // slice keeping references to points stored in the gridCells
-		cells:               make(map[gridIndex]*gridCell, 0), // gridCells that subdivide this node bounding box
-		totalNumberOfPoints: 0,                                // total number of points stored in this node and its children
-		numberOfPoints:      0,                                // number of points stored in this node (children excluded)
-		leaf:                1,                                // 1 if is a leaf, 0 otherwise
-		initialized:         false,                            // flag to see if the node has been initialized
+		parent:      parent,                           // the parent node
+		boundingBox: boundingBox,                      // bounding box of the node
+		cellSize:    maxCellSize,                      // max size setting to use for gridCells
+		minCellSize: minCellSize,                      // min size setting to use for gridCells
+		cells:       make(map[gridIndex]*gridCell, 0), // gridCells that subdivide this node bounding box
 	}
 
 	return &node
@@ -56,21 +44,13 @@ func (n *GridNode) AddDataPoint(point *data.Point) {
 		return
 	}
 
-	if n.isEmpty() {
-		n.initializeChildren()
-	}
-
 	pushedOutPoint := n.pushPointToCell(point)
 
 	if pushedOutPoint != nil {
+		// a point needs to go one level deeper
+		n.initializeChildrenIfNeeded()
 		n.addPointToChildren(pushedOutPoint)
-	} else {
-		// if no point was rejected then the number of points stored is increased by 1
-		atomic.AddInt32(&n.numberOfPoints, 1)
 	}
-
-	// in any case the total number of points stored by the n or its children increases by one
-	atomic.AddInt64(&n.totalNumberOfPoints, 1)
 }
 
 func (n *GridNode) GetInternalSrid() int {
@@ -92,40 +72,73 @@ func (n *GridNode) GetBoundingBox() *geometry.BoundingBox {
 }
 
 func (n *GridNode) GetChildren() [8]octree.INode {
+	n.RLock()
+	defer n.RUnlock()
 	return n.children
 }
 
 func (n *GridNode) GetPoints() []*data.Point {
-	return n.points
+	n.RLock()
+	defer n.RUnlock()
+	var pts []*data.Point
+	for _, gc := range n.cells {
+		pts = append(pts, gc.points...)
+	}
+	return pts
 }
 
-func (n *GridNode) TotalNumberOfPoints() int64 {
-	return n.totalNumberOfPoints
+func (n *GridNode) IsEmpty() bool {
+	n.RLock()
+	defer n.RUnlock()
+	for _, c := range n.children {
+		if c != nil {
+			return false
+		}
+	}
+
+	for _, cell := range n.cells {
+		if len(cell.points) > 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (n *GridNode) NumberOfPoints() int32 {
-	return n.numberOfPoints
+	n.RLock()
+	defer n.RUnlock()
+	var num int32
+	for _, cell := range n.cells {
+		num += int32(len(cell.points))
+	}
+	return num
 }
 
 func (n *GridNode) IsLeaf() bool {
-	return atomic.LoadInt32(&n.leaf) == 1
-}
-
-func (n *GridNode) IsInitialized() bool {
-	return n.initialized
+	n.RLock()
+	defer n.RUnlock()
+	for _, c := range n.children {
+		if c != nil {
+			return false
+		}
+	}
+	return true
 }
 
 func (n *GridNode) IsRoot() bool {
-	return n.root
+	return n.parent == nil
 }
 
 // Computes the geometric error for the given GridNode
 func (n *GridNode) ComputeGeometricError() float64 {
+	n.RLock()
+	defer n.RUnlock()
 	if n.IsRoot() {
 		var w = math.Abs(n.boundingBox.Xmax - n.boundingBox.Xmin)
 		var l = math.Abs(n.boundingBox.Ymax - n.boundingBox.Ymin)
 		var h = math.Abs(n.boundingBox.Zmax - n.boundingBox.Zmin)
-		return math.Sqrt(w * w + l * l + h * h)
+		return math.Sqrt(w*w + l*l + h*h)
 	}
 	// geometric error is estimated as the maximum possible distance between two points lying in the cell
 	return n.cellSize * math.Sqrt(3) * 2
@@ -146,22 +159,9 @@ func getOctantFromElement(element *data.Point, bbox *geometry.BoundingBox) uint8
 	return result
 }
 
-// loads the points stored in the grid cells into the slice data structure
-// and recursively builds the points of its children.
-// sets the slice reference to nil to allow GC to happen as the cells won't be used anymore
+// not needed, points are computed dynamically when required
 func (n *GridNode) BuildPoints() {
-	var points []*data.Point
-	for _, cell := range n.cells {
-		points = append(points, cell.points...)
-	}
-	n.points = points
-	n.cells = nil
-
-	for _, child := range n.children {
-		if child != nil {
-			child.(*GridNode).BuildPoints()
-		}
-	}
+	return
 }
 
 func (n *GridNode) GetParent() octree.INode {
@@ -169,9 +169,7 @@ func (n *GridNode) GetParent() octree.INode {
 }
 
 // gets the grid cell where the given point falls into, eventually creating it if it does not exist
-func (n *GridNode) getPointGridCell(point *data.Point) *gridCell {
-	index := *n.getPointGridCellIndex(point)
-
+func (n *GridNode) getPointGridCell(index gridIndex) *gridCell {
 	n.RLock()
 	cell := n.cells[index]
 	n.RUnlock()
@@ -197,11 +195,7 @@ func (n *GridNode) initializeGridCell(index *gridIndex) *gridCell {
 
 	out := n.cells[*index]
 	if out == nil {
-		out = &gridCell{
-			index:         *index,
-			size:          n.cellSize,
-			sizeThreshold: n.minCellSize,
-		}
+		out = &gridCell{}
 		n.cells[*index] = out
 	}
 
@@ -210,36 +204,38 @@ func (n *GridNode) initializeGridCell(index *gridIndex) *gridCell {
 	return out
 }
 
-// atomically checks if the node is empty
-func (n *GridNode) isEmpty() bool {
-	return atomic.LoadInt32(&n.numberOfPoints) == 0
-}
-
 // pushes a point to its gridcell and returns the point eventually pushed out
 func (n *GridNode) pushPointToCell(point *data.Point) *data.Point {
-	return n.getPointGridCell(point).pushPoint(point)
+	index := *n.getPointGridCellIndex(point)
+
+	return n.getPointGridCell(index).pushPoint(point, n.cellSize, n.minCellSize, index.x, index.y, index.z)
 }
 
 // add a point to the node children and clears the leaf flag from this node
 func (n *GridNode) addPointToChildren(point *data.Point) {
+	n.RLock()
+	defer n.RUnlock()
 	n.children[getOctantFromElement(point, n.boundingBox)].AddDataPoint(point)
-	n.clearLeafFlag()
 }
 
-// sets the leaf flag to 0 atomically
-func (n *GridNode) clearLeafFlag() {
-	atomic.StoreInt32(&n.leaf, 0)
+func (n *GridNode) IsInitialized() bool {
+	return true
 }
 
 // initializes the children to new empty nodes
-func (n *GridNode) initializeChildren() {
+func (n *GridNode) initializeChildrenIfNeeded() {
+	n.RLock()
+	if n.children[0] != nil {
+		n.RUnlock()
+		return
+	}
+	n.RUnlock()
 	n.Lock()
 	for i := uint8(0); i < 8; i++ {
 		if n.children[i] == nil {
-			n.children[i] = NewGridNode(n, getOctantBoundingBox(&i, n.boundingBox), n.cellSize/2.0, n.minCellSize, false)
+			n.children[i] = NewGridNode(n, getOctantBoundingBox(&i, n.boundingBox), n.cellSize/2.0, n.minCellSize)
 		}
 	}
-	n.initialized = true
 	n.Unlock()
 }
 

@@ -1,4 +1,4 @@
-package lidario
+package las
 
 import (
 	"bytes"

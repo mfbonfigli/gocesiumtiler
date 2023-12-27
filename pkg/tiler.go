@@ -3,17 +3,18 @@ package pkg
 import (
 	"errors"
 	"fmt"
-	"github.com/mfbonfigli/gocesiumtiler/internal/io"
-	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
-	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
-	"github.com/mfbonfigli/gocesiumtiler/pkg/algorithm_manager"
-	"github.com/mfbonfigli/gocesiumtiler/third_party/lasread"
-	"github.com/mfbonfigli/gocesiumtiler/tools"
 	"log"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"sync"
+
+	"github.com/mfbonfigli/gocesiumtiler/internal/io"
+	"github.com/mfbonfigli/gocesiumtiler/internal/las"
+	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
+	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
+	"github.com/mfbonfigli/gocesiumtiler/pkg/algorithm_manager"
+	"github.com/mfbonfigli/gocesiumtiler/tools"
 )
 
 type ITiler interface {
@@ -53,27 +54,20 @@ func (tiler *Tiler) RunTiler(opts *tiler.TilerOptions) error {
 
 func (tiler *Tiler) processLasFile(filePath string, opts *tiler.TilerOptions, tree octree.ITree) {
 	// Create empty octree
-	tiler.readLasData(filePath, opts, tree)
-	tiler.prepareDataStructure(tree)
+	r, err := tiler.getLasReader(filePath, opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tiler.prepareDataStructure(tree, r)
 	tiler.exportToCesiumTileset(tree, opts, getFilenameWithoutExtension(filePath))
 
 	tools.LogOutput("> done processing", filepath.Base(filePath))
 }
 
-func (tiler *Tiler) readLasData(filePath string, opts *tiler.TilerOptions, tree octree.ITree) {
-	// Reading files
-	tools.LogOutput("> reading data from las file...", filepath.Base(filePath))
-	err := readLas(filePath, opts, tree)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func (tiler *Tiler) prepareDataStructure(octree octree.ITree) {
+func (tiler *Tiler) prepareDataStructure(octree octree.ITree, r las.LasReader) {
 	// Build tree hierarchical structure
 	tools.LogOutput("> building data structure...")
-	err := octree.Build()
+	err := octree.Build(r)
 
 	if err != nil {
 		log.Fatal(err)
@@ -94,17 +88,10 @@ func getFilenameWithoutExtension(filePath string) string {
 	return nameWext[0 : len(nameWext)-len(extension)]
 }
 
-// Reads the given las file and preloads data in a list of Point
-func readLas(file string, opts *tiler.TilerOptions, tree octree.ITree) error {
-	var lf *lidario.LasFile
-	var err error
-	var lasFileLoader = lidario.NewLasFileLoader(tree)
-	lf, err = lasFileLoader.LoadLasFile(file, opts.Srid, opts.EightBitColors)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = lf.Close() }()
-	return nil
+// Reads the given las file and returns a point reader
+func (tiler *Tiler) getLasReader(file string, opts *tiler.TilerOptions) (las.LasReader, error) {
+	tools.LogOutput("> parsing las file...", filepath.Base(file))
+	return las.NewFileLasReader(file, opts.Srid, opts.EightBitColors)
 }
 
 // Exports the data cloud represented by the given built octree into 3D tiles data structure according to the options

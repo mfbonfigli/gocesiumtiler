@@ -3,22 +3,37 @@ package proj4_coordinate_converter
 import (
 	"bufio"
 	"errors"
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
-	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
-	"github.com/mfbonfigli/gocesiumtiler/tools"
-	"github.com/xeonx/proj4"
 	"log"
 	"math"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
+
+	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
+	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
+	"github.com/mfbonfigli/gocesiumtiler/tools"
+	proj "github.com/xeonx/proj4"
 )
 
 const toRadians = math.Pi / 180
 const toDeg = 180 / math.Pi
 
+// proj4 wants coordinates in slices, to avoid always allocating one in the heap
+// everytime is needed a buffer protected by a mutex is used
+type floatBuffer struct {
+	buf []float64
+	sync.Mutex
+}
+
 type proj4CoordinateConverter struct {
 	EpsgDatabase map[int]*epsgProjection
+	// proj4 wants coordinates in slices, to avoid always allocating one
+	// a set of buffers is used, with a synchronized index that stores the next available free buffer
+	buffers   []*floatBuffer
+	nextIndex int
+	sync.Mutex
 }
 
 func NewProj4CoordinateConverter() converters.CoordinateConverter {
@@ -32,7 +47,23 @@ func NewProj4CoordinateConverter() converters.CoordinateConverter {
 
 	return &proj4CoordinateConverter{
 		EpsgDatabase: *loadEPSGProjectionDatabase(file),
+		nextIndex:    0,
+		buffers:      make([]*floatBuffer, 10*runtime.NumCPU()),
 	}
+}
+
+func (cc *proj4CoordinateConverter) getFloatBuffer() *floatBuffer {
+	cc.Lock()
+	defer cc.Unlock()
+	if cc.buffers[cc.nextIndex] == nil {
+		cc.buffers[cc.nextIndex] = &floatBuffer{buf: make([]float64, 1)}
+	}
+	buf := cc.buffers[cc.nextIndex]
+	cc.nextIndex += 1
+	if cc.nextIndex >= len(cc.buffers) {
+		cc.nextIndex = 0
+	}
+	return buf
 }
 
 func loadEPSGProjectionDatabase(databasePath string) *map[int]*epsgProjection {
@@ -88,7 +119,7 @@ func (cc *proj4CoordinateConverter) ConvertCoordinateSrid(sourceSrid int, target
 		return coord, err
 	}
 
-	var converted, result = executeConversion(&coord, src, dst)
+	var converted, result = cc.executeConversion(&coord, src, dst)
 
 	return *converted, result
 }
@@ -116,7 +147,7 @@ func (cc *proj4CoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geom
 		return nil, nil
 	}
 
-	return geometry.NewBoundingBox(w84lc.X * toRadians, w84lc.Y * toRadians, w84uc.X * toRadians, w84uc.Y * toRadians, bbox.Zmin, bbox.Zmax), nil
+	return geometry.NewBoundingBox(w84lc.X*toRadians, w84lc.Y*toRadians, w84uc.X*toRadians, w84uc.Y*toRadians, bbox.Zmin, bbox.Zmax), nil
 }
 
 // Converts the input coordinate from the given srid to EPSG:4326 srid
@@ -142,8 +173,27 @@ func (cc *proj4CoordinateConverter) Cleanup() {
 	}
 }
 
-func executeConversion(coord *geometry.Coordinate, sourceProj *proj.Proj, destinationProj *proj.Proj) (*geometry.Coordinate, error) {
-	var x, y, z = getCoordinateArraysForConversion(coord, sourceProj)
+func (cc *proj4CoordinateConverter) executeConversion(coord *geometry.Coordinate, sourceProj *proj.Proj, destinationProj *proj.Proj) (*geometry.Coordinate, error) {
+	xBuf := cc.getFloatBuffer()
+	yBuf := cc.getFloatBuffer()
+	xBuf.Lock()
+	yBuf.Lock()
+	defer xBuf.Unlock()
+	defer yBuf.Unlock()
+
+	x := xBuf.buf
+	y := yBuf.buf
+	var z []float64 = nil
+	x[0] = getCoordinateInRadiansFromSridFormat(coord.X, sourceProj)
+	y[0] = getCoordinateInRadiansFromSridFormat(coord.Y, sourceProj)
+
+	if !math.IsNaN(coord.Z) {
+		zBuf := cc.getFloatBuffer()
+		zBuf.Lock()
+		defer zBuf.Unlock()
+		z = zBuf.buf
+		z[0] = coord.Z
+	}
 
 	var err = proj.TransformRaw(sourceProj, destinationProj, x, y, z)
 
@@ -156,29 +206,15 @@ func executeConversion(coord *geometry.Coordinate, sourceProj *proj.Proj, destin
 	return &converted, err
 }
 
-// From a input Coordinate object and associated Proj object, return a set of arrays to be used for coordinate coversion
-func getCoordinateArraysForConversion(coord *geometry.Coordinate, srid *proj.Proj) ([]float64, []float64, []float64) {
-	var x, y, z []float64
-
-	x = []float64{*getCoordinateInRadiansFromSridFormat(coord.X, srid)}
-	y = []float64{*getCoordinateInRadiansFromSridFormat(coord.Y, srid)}
-
-	if coord.Z != math.NaN() {
-		z = []float64{coord.Z}
-	}
-
-	return x, y, z
-}
-
 // Returns the input coordinate expressed in the given srid converting it into radians if necessary
-func getCoordinateInRadiansFromSridFormat(coord float64, srid *proj.Proj) *float64 {
+func getCoordinateInRadiansFromSridFormat(coord float64, srid *proj.Proj) float64 {
 	var radians = coord
 
 	if srid.IsLatLong() {
 		radians = coord * toRadians
 	}
 
-	return &radians
+	return radians
 }
 
 func extractZPointerIfPresent(zContainer []float64) float64 {

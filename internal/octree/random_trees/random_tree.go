@@ -2,15 +2,17 @@ package random_trees
 
 import (
 	"errors"
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
-	"github.com/mfbonfigli/gocesiumtiler/internal/data"
-	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
-	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
-	"github.com/mfbonfigli/gocesiumtiler/internal/point_loader"
-	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 	"log"
 	"runtime"
 	"sync"
+
+	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
+	"github.com/mfbonfigli/gocesiumtiler/internal/data"
+	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
+	"github.com/mfbonfigli/gocesiumtiler/internal/las"
+	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
+	"github.com/mfbonfigli/gocesiumtiler/internal/point_loader"
+	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 )
 
 // Represents an RandomTree of points and contains all information needed
@@ -47,9 +49,14 @@ func NewBoxedRandomTree(opts *tiler.TilerOptions, coordinateConverter converters
 
 // Builds the hierarchical tree structure propagating the added items according to the TilerOptions provided
 // during initialization
-func (t *RandomTree) Build() error {
+func (t *RandomTree) Build(l las.LasReader) error {
 	if t.built {
 		return errors.New("octree already built")
+	}
+
+	for i := 0; i < l.NumberOfPoints(); i++ {
+		x, y, z, r, g, b, in, cls := l.GetPointAt(i)
+		t.AddPoint(&geometry.Coordinate{X: x, Y: y, Z: z}, r, g, b, in, cls, l.GetSrid())
 	}
 
 	t.init()

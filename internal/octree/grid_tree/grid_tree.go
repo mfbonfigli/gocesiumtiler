@@ -2,14 +2,17 @@ package grid_tree
 
 import (
 	"errors"
+	"log"
+	"math"
+	"runtime"
+	"sync"
+
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
+	"github.com/mfbonfigli/gocesiumtiler/internal/las"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
 	"github.com/mfbonfigli/gocesiumtiler/internal/point_loader"
-	"log"
-	"runtime"
-	"sync"
 )
 
 // Coordinates are stored in EPSG 3395, which is a cartesian 2D metric reference system
@@ -40,41 +43,49 @@ func NewGridTree(coordinateConverter converters.CoordinateConverter, elevationCo
 	}
 }
 
-// Builds the hierarchical tree structure 
-func (tree *GridTree) Build() error {
-	if tree.built {
+// Builds the hierarchical tree structure
+func (t *GridTree) Build(l las.LasReader) error {
+	if t.built {
 		return errors.New("octree already built")
 	}
 
-	tree.init()
+	for i := 0; i < int(math.Min(float64(l.NumberOfPoints()), 400000)); i++ {
+		x, y, z, r, g, b, in, cls := l.GetPointAt(i)
+		t.AddPoint(&geometry.Coordinate{X: x, Y: y, Z: z}, r, g, b, in, cls, l.GetSrid())
+	}
+
+	t.init()
 
 	var wg sync.WaitGroup
-	tree.launchParallelPointLoaders(&wg)
+	t.launchParallelPointLoaders(&wg)
 	wg.Wait()
 
-	tree.rootNode.(*GridNode).BuildPoints()
-	tree.built = true
+	t.rootNode.(*GridNode).BuildPoints()
+	t.built = true
 
 	return nil
 }
 
-func (tree *GridTree) GetRootNode() octree.INode {
-	return tree.rootNode
+func (t *GridTree) GetRootNode() octree.INode {
+	return t.rootNode
 }
 
-func (tree *GridTree) IsBuilt() bool {
-	return tree.built
+func (t *GridTree) IsBuilt() bool {
+	return t.built
 }
 
-func (tree *GridTree) AddPoint(coordinate *geometry.Coordinate, r uint8, g uint8, b uint8, intensity uint8, classification uint8, srid int) {
-	tree.Loader.AddPoint(tree.getPointFromRawData(coordinate, r, g, b, intensity, classification, srid))
+func (t *GridTree) AddPoint(coordinate *geometry.Coordinate, r uint8, g uint8, b uint8, intensity uint8, classification uint8, srid int) {
+	t.Loader.AddPoint(t.getPointFromRawData(coordinate, r, g, b, intensity, classification, srid))
 }
 
-func (tree *GridTree) getPointFromRawData(coordinate *geometry.Coordinate, r uint8, g uint8, b uint8, intensity uint8, classification uint8, srid int) *data.Point {
-	wgs84coords, err := tree.coordinateConverter.ConvertCoordinateSrid(srid, 4326, *coordinate)
-	z := tree.elevationCorrector.CorrectElevation(wgs84coords.X, wgs84coords.Y, wgs84coords.Z)
+func (t *GridTree) getPointFromRawData(coordinate *geometry.Coordinate, r uint8, g uint8, b uint8, intensity uint8, classification uint8, srid int) *data.Point {
+	wgs84coords, err := t.coordinateConverter.ConvertCoordinateSrid(srid, 4326, *coordinate)
+	if err != nil {
+		log.Fatalf("unable to convert coordinate: %v", err)
+	}
+	z := t.elevationCorrector.CorrectElevation(wgs84coords.X, wgs84coords.Y, wgs84coords.Z)
 
-	worldMercatorCoords, err := tree.coordinateConverter.ConvertCoordinateSrid(
+	worldMercatorCoords, err := t.coordinateConverter.ConvertCoordinateSrid(
 		srid,
 		internalCoordinateEpsgCode,
 		geometry.Coordinate{
@@ -91,29 +102,27 @@ func (tree *GridTree) getPointFromRawData(coordinate *geometry.Coordinate, r uin
 	return data.NewPoint(worldMercatorCoords.X, worldMercatorCoords.Y, worldMercatorCoords.Z, r, g, b, intensity, classification)
 }
 
-
-
-func (tree *GridTree) init() {
-	box := tree.GetBounds()
-	node := NewGridNode(nil, geometry.NewBoundingBox(box[0], box[1], box[2], box[3], box[4], box[5]), tree.maxCellSize, tree.minCellSize, true)
-	tree.rootNode = node
-	tree.InitializeLoader()
+func (t *GridTree) init() {
+	box := t.GetBounds()
+	node := NewGridNode(nil, geometry.NewBoundingBox(box[0], box[1], box[2], box[3], box[4], box[5]), t.maxCellSize, t.minCellSize)
+	t.rootNode = node
+	t.InitializeLoader()
 }
 
-func (tree *GridTree) launchParallelPointLoaders(waitGroup *sync.WaitGroup) {
+func (t *GridTree) launchParallelPointLoaders(waitGroup *sync.WaitGroup) {
 	N := runtime.NumCPU()
 
 	for i := 0; i < N; i++ {
 		waitGroup.Add(1)
-		go tree.launchPointLoader(waitGroup)
+		go t.launchPointLoader(waitGroup)
 	}
 }
 
-func (tree *GridTree) launchPointLoader(waitGroup *sync.WaitGroup) {
+func (t *GridTree) launchPointLoader(waitGroup *sync.WaitGroup) {
 	for {
-		val, shouldContinue := tree.Loader.GetNext()
+		val, shouldContinue := t.Loader.GetNext()
 		if val != nil {
-			tree.rootNode.AddDataPoint(val)
+			t.rootNode.AddDataPoint(val)
 		}
 		if !shouldContinue {
 			break

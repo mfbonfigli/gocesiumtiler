@@ -2,15 +2,16 @@ package random_trees
 
 import "C"
 import (
+	"math"
+	"sync"
+	"sync/atomic"
+
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters/coordinate/proj4_coordinate_converter"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
 	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
-	"math"
-	"sync"
-	"sync/atomic"
 )
 
 // Models a node of the octree, which can either be a leaf (a node without children nodes) or not. Each Node can contain
@@ -103,8 +104,8 @@ func (n *RandomNode) GetPoints() []*data.Point {
 	return n.points
 }
 
-func (n *RandomNode) TotalNumberOfPoints() int64 {
-	return n.totalNumberOfPoints
+func (n *RandomNode) IsEmpty() bool {
+	return n.totalNumberOfPoints == 0
 }
 
 func (n *RandomNode) NumberOfPoints() int32 {
@@ -175,7 +176,7 @@ func (n *RandomNode) estimateErrorAsDensityDifference() float64 {
 		}
 		parent = parent.(*RandomNode).parent
 	}
-	densityWithAllPoints := math.Pow(volume/float64(totalRenderedPoints+n.TotalNumberOfPoints()-int64(n.NumberOfPoints())), 0.333)
+	densityWithAllPoints := math.Pow(volume/float64(totalRenderedPoints+n.totalNumberOfPoints-int64(n.NumberOfPoints())), 0.333)
 	densityWithOnlyThisTile := math.Pow(volume/float64(totalRenderedPoints), 0.333)
 
 	return densityWithOnlyThisTile - densityWithAllPoints

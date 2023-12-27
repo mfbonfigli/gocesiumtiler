@@ -2,12 +2,13 @@ package unit
 
 import "C"
 import (
+	"sync"
+
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
 	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
-	"sync"
 )
 
 // mock implementation of the INode interface
@@ -23,6 +24,7 @@ type mockNode struct {
 	opts                *tiler.TilerOptions
 	leaf                bool
 	initialized         bool
+	isEmpty             bool
 	geometricError      float64
 	sync.RWMutex
 }
@@ -33,6 +35,9 @@ func (mockNode *mockNode) IsRoot() bool {
 	return mockNode.parent == nil
 }
 
+func (mockNode *mockNode) IsEmpty() bool {
+	return mockNode.isEmpty
+}
 func (mockNode *mockNode) GetBoundingBoxRegion(converter converters.CoordinateConverter) (*geometry.BoundingBox, error) {
 	reg, err := converter.Convert2DBoundingboxToWGS84Region(mockNode.boundingBox, mockNode.GetInternalSrid())
 

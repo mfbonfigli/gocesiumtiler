@@ -4,17 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"path"
+	"strconv"
+	"strings"
+	"sync"
+
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
 	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 	"github.com/mfbonfigli/gocesiumtiler/tools"
-	"io/ioutil"
-	"path"
-	"strconv"
-	"strings"
-	"sync"
 )
 
 type StandardConsumer struct {
@@ -381,7 +382,7 @@ func (c *StandardConsumer) generateTilesetChildren(node octree.INode) ([]Child, 
 }
 
 func (c *StandardConsumer) nodeContainsPoints(node octree.INode) bool {
-	return node != nil && node.TotalNumberOfPoints() > 0
+	return node != nil && !node.IsEmpty()
 }
 
 func (c *StandardConsumer) generateTilesetChild(child octree.INode, childIndex int) (*Child, error) {

@@ -4,10 +4,11 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/internal/converters"
 	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
+	"github.com/mfbonfigli/gocesiumtiler/internal/las"
 )
 
 type ITree interface {
-	Build() error
+	Build(las.LasReader) error
 	GetRootNode() INode
 	IsBuilt() bool
 	// Adds a Point to the Tree
@@ -21,7 +22,7 @@ type INode interface {
 	GetBoundingBoxRegion(converter converters.CoordinateConverter) (*geometry.BoundingBox, error)
 	GetChildren() [8]INode
 	GetPoints() []*data.Point
-	TotalNumberOfPoints() int64
+	IsEmpty() bool
 	NumberOfPoints() int32
 	IsLeaf() bool
 	IsInitialized() bool

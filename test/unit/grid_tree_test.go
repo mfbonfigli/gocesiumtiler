@@ -1,10 +1,29 @@
 package unit
 
 import (
+	"testing"
+
 	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"github.com/mfbonfigli/gocesiumtiler/internal/octree/grid_tree"
-	"testing"
 )
+
+type mockLasReader struct {
+	ptProv func(int) (x, y, z float64, r, g, b, in, cls uint8)
+	nPts   int
+	srid   int
+}
+
+func (m *mockLasReader) NumberOfPoints() int {
+	return m.nPts
+}
+
+func (m *mockLasReader) GetPointAt(i int) (x, y, z float64, r, g, b, in, cls uint8) {
+	return m.ptProv(i)
+}
+
+func (m *mockLasReader) GetSrid() int {
+	return m.srid
+}
 
 type mockCoordinateConverter struct{}
 
@@ -77,15 +96,17 @@ func TestTreeBuildSuccess(t *testing.T) {
 	i := uint8(7)
 	c := uint8(8)
 
-	coord := &geometry.Coordinate{
-		X: x,
-		Y: y,
-		Z: z,
+	mockReader := &mockLasReader{
+		ptProv: func(_ int) (float64, float64, float64, uint8, uint8, uint8, uint8, uint8) {
+			return x, y, z, r, g, b, i, c
+		},
+		nPts: 1,
+		srid: 4326,
 	}
 
-	tree.AddPoint(coord, r, g, b, i, c, 4326)
+	//tree.AddPoint(coord, r, g, b, i, c, 4326)
 
-	err := tree.Build()
+	err := tree.Build(mockReader)
 
 	if err != nil {
 		t.Errorf("Unexpected error occurred while building the tree: %s", err)
@@ -117,15 +138,17 @@ func TestGetRootNode(t *testing.T) {
 	i := uint8(7)
 	c := uint8(8)
 
-	coord := &geometry.Coordinate{
-		X: x,
-		Y: y,
-		Z: z,
+	//tree.AddPoint(coord, r, g, b, i, c, 4326)
+
+	mockReader := &mockLasReader{
+		ptProv: func(_ int) (float64, float64, float64, uint8, uint8, uint8, uint8, uint8) {
+			return x, y, z, r, g, b, i, c
+		},
+		nPts: 1,
+		srid: 4326,
 	}
 
-	tree.AddPoint(coord, r, g, b, i, c, 4326)
-
-	err := tree.Build()
+	err := tree.Build(mockReader)
 
 	if err != nil {
 		t.Errorf("Unexpected error occurred while building the tree: %s", err)
