@@ -18,6 +18,8 @@ import (
 // Represents an RandomTree of points and contains all information needed
 // to propagate points in the tree
 type RandomTree struct {
+	offX, offY, offZ    float64
+	offsetInit          bool
 	rootNode            octree.INode
 	built               bool
 	opts                *tiler.TilerOptions
@@ -29,6 +31,7 @@ type RandomTree struct {
 // Builds an empty RandomTree initializing its properties to the correct defaults
 func NewRandomTree(opts *tiler.TilerOptions, coordinateConverter converters.CoordinateConverter, elevationCorrector converters.ElevationCorrector) octree.ITree {
 	return &RandomTree{
+		offsetInit:          false,
 		built:               false,
 		opts:                opts,
 		Loader:              point_loader.NewRandomLoader(),
@@ -39,6 +42,7 @@ func NewRandomTree(opts *tiler.TilerOptions, coordinateConverter converters.Coor
 
 func NewBoxedRandomTree(opts *tiler.TilerOptions, coordinateConverter converters.CoordinateConverter, elevationCorrector converters.ElevationCorrector) octree.ITree {
 	return &RandomTree{
+		offsetInit:          false,
 		built:               false,
 		opts:                opts,
 		Loader:              point_loader.NewRandomBoxLoader(),
@@ -113,9 +117,25 @@ func (t *RandomTree) AddPoint(coordinate *geometry.Coordinate, r uint8, g uint8,
 
 func (t *RandomTree) getPointFromRawData(coordinate *geometry.Coordinate, r uint8, g uint8, b uint8, intensity uint8, classification uint8, srid int) *data.Point {
 	tr, err := t.coordinateConverter.ConvertCoordinateSrid(srid, 4326, *coordinate)
+	x := tr.X
+	y := tr.Y
+	z := t.elevationCorrector.CorrectElevation(tr.X, tr.Y, tr.Z)
+	if !t.offsetInit {
+		t.offX = x
+		t.offY = y
+		t.offZ = z
+		t.offsetInit = true
+	}
+	x -= t.offX
+	y -= t.offY
+	z -= t.offZ
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return data.NewPoint(tr.X, tr.Y, t.elevationCorrector.CorrectElevation(tr.X, tr.Y, tr.Z), r, g, b, intensity, classification)
+	return data.NewPoint(float32(x), float32(y), float32(z), r, g, b, intensity, classification)
+}
+
+func (t *RandomTree) GetOffset() (x, y, z float64) {
+	return t.offX, t.offY, t.offZ
 }

@@ -6,7 +6,7 @@ import (
 
 type CoordinateConverter interface {
 	ConvertCoordinateSrid(sourceSrid int, targetSrid int, coord geometry.Coordinate) (geometry.Coordinate, error)
-	Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int) (*geometry.BoundingBox, error)
+	Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int, offX, offY, offZ float64) (*geometry.BoundingBox, error)
 	ConvertToWGS84Cartesian(coord geometry.Coordinate, sourceSrid int) (geometry.Coordinate, error)
 	Cleanup()
 }

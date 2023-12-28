@@ -82,8 +82,8 @@ func (n *RandomNode) GetInternalSrid() int {
 	return n.internalSrid
 }
 
-func (n *RandomNode) GetBoundingBoxRegion(converter converters.CoordinateConverter) (*geometry.BoundingBox, error) {
-	reg, err := converter.Convert2DBoundingboxToWGS84Region(n.boundingBox, n.GetInternalSrid())
+func (n *RandomNode) GetBoundingBoxRegion(converter converters.CoordinateConverter, offX, offY, offZ float64) (*geometry.BoundingBox, error) {
+	reg, err := converter.Convert2DBoundingboxToWGS84Region(n.boundingBox, n.GetInternalSrid(), offX, offY, offZ)
 
 	if err != nil {
 		return nil, err
@@ -92,8 +92,8 @@ func (n *RandomNode) GetBoundingBoxRegion(converter converters.CoordinateConvert
 	return reg, nil
 }
 
-func (n *RandomNode) GetBoundingBox() *geometry.BoundingBox {
-	return n.boundingBox
+func (n *RandomNode) GetBoundingBox(offX, offY, offZ float64) *geometry.BoundingBox {
+	return n.boundingBox.FromOffset(offX, offY, offZ)
 }
 
 func (n *RandomNode) GetChildren() [8]octree.INode {
@@ -145,16 +145,16 @@ func getOctantBoundingBox(octant *uint8, bbox *geometry.BoundingBox) *geometry.B
 }
 
 // Computes the geometric error for the given RandomNode
-func (n *RandomNode) ComputeGeometricError() float64 {
+func (n *RandomNode) ComputeGeometricError(offX, offY, offZ float64) float64 {
 	if n.isRootNodeAndLeafNode() {
-		return n.estimateErrorAsBoundingBoxDiagonal()
+		return n.estimateErrorAsBoundingBoxDiagonal(offX, offY, offZ)
 	}
 
 	return n.estimateErrorAsDensityDifference()
 }
 
-func (n *RandomNode) estimateErrorAsBoundingBoxDiagonal() float64 {
-	regionBox, _ := proj4_coordinate_converter.NewProj4CoordinateConverter().Convert2DBoundingboxToWGS84Region(n.boundingBox, n.GetInternalSrid())
+func (n *RandomNode) estimateErrorAsBoundingBoxDiagonal(offX, offY, offZ float64) float64 {
+	regionBox, _ := proj4_coordinate_converter.NewProj4CoordinateConverter().Convert2DBoundingboxToWGS84Region(n.boundingBox, n.GetInternalSrid(), offX, offY, offZ)
 	region := regionBox.GetAsArray()
 	var latA = region[1]
 	var latB = region[3]
@@ -184,9 +184,9 @@ func (n *RandomNode) estimateErrorAsDensityDifference() float64 {
 
 // Checks if the bounding box contains the given element
 func canBoundingBoxContainElement(e *data.Point, bbox *geometry.BoundingBox) bool {
-	return (e.X >= bbox.Xmin && e.X <= bbox.Xmax) &&
-		(e.Y >= bbox.Ymin && e.Y <= bbox.Ymax) &&
-		(e.Z >= bbox.Zmin && e.Z <= bbox.Zmax)
+	return (e.X >= float32(bbox.Xmin) && e.X <= float32(bbox.Xmax)) &&
+		(e.Y >= float32(bbox.Ymin) && e.Y <= float32(bbox.Ymax)) &&
+		(e.Z >= float32(bbox.Zmin) && e.Z <= float32(bbox.Zmax))
 }
 
 func (n *RandomNode) isRootNodeAndLeafNode() bool {

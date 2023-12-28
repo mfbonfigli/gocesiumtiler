@@ -1,10 +1,11 @@
 package point_loader
 
 import (
-	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"math"
 	"math/rand"
 	"sync"
+
+	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 )
 
 // Stores points and returns them shuffled according to the following strategy. points are grouped in buckets (boxes).

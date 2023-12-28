@@ -126,17 +126,17 @@ func (cc *proj4CoordinateConverter) ConvertCoordinateSrid(sourceSrid int, target
 
 // Converts the generic bounding box bounds values from the given input srid to a EPSG:4326 srid (in radians)
 // and returns a float64 array containing xMin, yMin, xMax, yMax, zMin, zMax. Z values are left unchanged
-func (cc *proj4CoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int) (*geometry.BoundingBox, error) {
+func (cc *proj4CoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int, offX, offY, offZ float64) (*geometry.BoundingBox, error) {
 	z := float64(0)
 	projLowCorn := geometry.Coordinate{
-		X: bbox.Xmin,
-		Y: bbox.Ymin,
-		Z: z,
+		X: bbox.Xmin + offX,
+		Y: bbox.Ymin + offY,
+		Z: z + offZ,
 	}
 	projUppCorn := geometry.Coordinate{
-		X: bbox.Xmax,
-		Y: bbox.Ymax,
-		Z: z,
+		X: bbox.Xmax + offX,
+		Y: bbox.Ymax + offY,
+		Z: z + offZ,
 	}
 	w84lc, err := cc.ConvertCoordinateSrid(srid, 4326, projLowCorn)
 	if err != nil {
@@ -147,7 +147,7 @@ func (cc *proj4CoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geom
 		return nil, nil
 	}
 
-	return geometry.NewBoundingBox(w84lc.X*toRadians, w84lc.Y*toRadians, w84uc.X*toRadians, w84uc.Y*toRadians, bbox.Zmin, bbox.Zmax), nil
+	return geometry.NewBoundingBox(w84lc.X*toRadians, w84lc.Y*toRadians, w84uc.X*toRadians, w84uc.Y*toRadians, bbox.Zmin+offZ, bbox.Zmax+offZ), nil
 }
 
 // Converts the input coordinate from the given srid to EPSG:4326 srid

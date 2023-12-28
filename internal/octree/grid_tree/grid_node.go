@@ -57,8 +57,8 @@ func (n *GridNode) GetInternalSrid() int {
 	return internalCoordinateEpsgCode
 }
 
-func (n *GridNode) GetBoundingBoxRegion(converter converters.CoordinateConverter) (*geometry.BoundingBox, error) {
-	reg, err := converter.Convert2DBoundingboxToWGS84Region(n.boundingBox, n.GetInternalSrid())
+func (n *GridNode) GetBoundingBoxRegion(converter converters.CoordinateConverter, offX, offY, offZ float64) (*geometry.BoundingBox, error) {
+	reg, err := converter.Convert2DBoundingboxToWGS84Region(n.boundingBox, n.GetInternalSrid(), offX, offY, offZ)
 
 	if err != nil {
 		return nil, err
@@ -67,8 +67,8 @@ func (n *GridNode) GetBoundingBoxRegion(converter converters.CoordinateConverter
 	return reg, nil
 }
 
-func (n *GridNode) GetBoundingBox() *geometry.BoundingBox {
-	return n.boundingBox
+func (n *GridNode) GetBoundingBox(offX, offY, offZ float64) *geometry.BoundingBox {
+	return n.boundingBox.FromOffset(offX, offY, offZ)
 }
 
 func (n *GridNode) GetChildren() [8]octree.INode {
@@ -131,7 +131,7 @@ func (n *GridNode) IsRoot() bool {
 }
 
 // Computes the geometric error for the given GridNode
-func (n *GridNode) ComputeGeometricError() float64 {
+func (n *GridNode) ComputeGeometricError(offX, offY, offZ float64) float64 {
 	n.RLock()
 	defer n.RUnlock()
 	if n.IsRoot() {

@@ -1,10 +1,11 @@
 package point_loader
 
 import (
-	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"math"
 	"sync"
 	"sync/atomic"
+
+	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 )
 
 // Stores points and returns them in order

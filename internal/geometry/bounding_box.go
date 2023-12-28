@@ -27,6 +27,21 @@ func NewBoundingBox(Xmin, Xmax, Ymin, Ymax, Zmin, Zmax float64) *BoundingBox {
 	return &bbox
 }
 
+func (b *BoundingBox) FromOffset(offX, offY, offZ float64) *BoundingBox {
+	return &BoundingBox{
+		Xmin: b.Xmin + offX,
+		Xmax: b.Xmax + offX,
+		Ymin: b.Ymin + offY,
+		Ymax: b.Ymax + offY,
+		Zmin: b.Zmin + offZ,
+		Zmax: b.Zmax + offZ,
+		Xmid: b.Xmid + offX,
+		Ymid: b.Ymid + offY,
+		Zmid: b.Zmid + offZ,
+	}
+
+}
+
 // Computes a bounding box from the given box and the given octant index
 func NewBoundingBoxFromParent(parent *BoundingBox, octant *uint8) *BoundingBox {
 	var xMin, xMax, yMin, yMax, zMin, zMax float64
@@ -71,10 +86,10 @@ func (b *BoundingBox) GetAsArray() []float64 {
 }
 
 func (b *BoundingBox) distance(lat1, lat2, lon1, lon2, el1, el2 float64) float64 {
-	R := 6378137 / 1000; // Radius of the earth
+	R := 6378137 / 1000 // Radius of the earth
 	latDistance := (lat2 - lat1) * toRadians
 	lonDistance := (lon2 - lon1) * toRadians
-	a := math.Sin(latDistance/2)*math.Sin(latDistance/2) + math.Cos(lat1*toRadians)*math.Cos(lat2*toRadians)*math.Sin(lonDistance/2)*math.Sin(lonDistance/2);
+	a := math.Sin(latDistance/2)*math.Sin(latDistance/2) + math.Cos(lat1*toRadians)*math.Cos(lat2*toRadians)*math.Sin(lonDistance/2)*math.Sin(lonDistance/2)
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 	distance := float64(R) * c * 1000 // convert to meters
 	height := el1 - el2

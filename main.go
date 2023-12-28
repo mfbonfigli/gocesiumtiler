@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -35,7 +34,6 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/pkg"
 	"github.com/mfbonfigli/gocesiumtiler/pkg/algorithm_manager/std_algorithm_manager"
 	"github.com/mfbonfigli/gocesiumtiler/tools"
-	"github.com/pkg/profile"
 	// "github.com/pkg/profile" // enable for profiling
 )
 
@@ -53,7 +51,7 @@ const logo = `
 
 func main() {
 	// remove comment to enable the profiler (remember to remove comment in the imports)
-	defer profile.Start(profile.MemProfileRate(1)).Stop()
+	// defer profile.Start(profile.MemProfileRate(1)).Stop()
 
 	// Retrieve command line args
 	flags := tools.ParseFlags()
@@ -102,12 +100,6 @@ func main() {
 		log.Fatal("Error parsing input parameters: " + msg)
 	}
 
-	go func() {
-		for {
-			PrintMemUsage()
-			time.Sleep(500 * time.Millisecond)
-		}
-	}()
 	// Starts the tiler
 	// defer timeTrack(time.Now(), "tiler")
 	err := pkg.NewTiler(tools.NewStandardFileFinder(), std_algorithm_manager.NewAlgorithmManager(&opts)).RunTiler(&opts)
@@ -163,13 +155,4 @@ func showHelp() {
 
 func printVersion() {
 	fmt.Println("v." + VERSION)
-}
-
-func PrintMemUsage() {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	fmt.Printf("Alloc = %v MiB", m.Alloc/1024/1024)
-	fmt.Printf("\tTotalAlloc = %v MiB", m.TotalAlloc/1024/1024)
-	fmt.Printf("\tSys = %v MiB", m.Sys/1024/1024)
-	fmt.Printf("\tNumGC = %v\n", m.NumGC)
 }

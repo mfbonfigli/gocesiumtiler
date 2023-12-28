@@ -134,7 +134,7 @@ func TestGridNodeGetBoundingBoxRegion(t *testing.T) {
 		1.0,
 	)
 
-	region, _ := node.GetBoundingBoxRegion(&mockCoordinateConverter{})
+	region, _ := node.GetBoundingBoxRegion(&mockCoordinateConverter{}, 0, 0, 0)
 
 	if region != inputRegion {
 		t.Errorf("Expected region equal to node bounding box")
@@ -333,8 +333,8 @@ func TestGridNodeComputeGeometricError(t *testing.T) {
 	)
 
 	expectedError := 1.0 * math.Sqrt(3) * 2
-	if node.ComputeGeometricError() != expectedError {
-		t.Errorf("Expected ComputeGeometricError %f, got %f", expectedError, node.ComputeGeometricError())
+	if node.ComputeGeometricError(0, 0, 0) != expectedError {
+		t.Errorf("Expected ComputeGeometricError %f, got %f", expectedError, node.ComputeGeometricError(0, 0, 0))
 	}
 }
 
@@ -347,8 +347,8 @@ func TestRootGridNodeComputeGeometricError(t *testing.T) {
 	)
 
 	expectedError := 1.0 * math.Sqrt(4+1+1)
-	if node.ComputeGeometricError() != expectedError {
-		t.Errorf("Expected ComputeGeometricError %f, got %f", expectedError, node.ComputeGeometricError())
+	if node.ComputeGeometricError(0, 0, 0) != expectedError {
+		t.Errorf("Expected ComputeGeometricError %f, got %f", expectedError, node.ComputeGeometricError(0, 0, 0))
 	}
 }
 

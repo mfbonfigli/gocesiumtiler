@@ -1,22 +1,25 @@
 package io
 
 import (
-	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
-	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 	"path"
 	"strconv"
 	"sync"
+
+	"github.com/mfbonfigli/gocesiumtiler/internal/octree"
+	"github.com/mfbonfigli/gocesiumtiler/internal/tiler"
 )
 
 type StandardProducer struct {
 	basePath string
 	options  *tiler.TilerOptions
+	tree     octree.ITree
 }
 
-func NewStandardProducer(basepath string, subfolder string, options *tiler.TilerOptions) Producer {
+func NewStandardProducer(basepath string, subfolder string, options *tiler.TilerOptions, tree octree.ITree) Producer {
 	return &StandardProducer{
 		basePath: path.Join(basepath, subfolder),
 		options:  options,
+		tree:     tree,
 	}
 }
 
@@ -32,10 +35,14 @@ func (p *StandardProducer) Produce(work chan *WorkUnit, wg *sync.WaitGroup, node
 func (p *StandardProducer) produce(basePath string, node octree.INode, work chan *WorkUnit, wg *sync.WaitGroup) {
 	// if node contains points (it should always be the case), then submit work
 	if node.NumberOfPoints() > 0 {
+		offX, offY, offZ := p.tree.GetOffset()
 		work <- &WorkUnit{
 			Node:     node,
 			BasePath: basePath,
 			Opts:     p.options,
+			OffX:     offX,
+			OffY:     offY,
+			OffZ:     offZ,
 		}
 	}
 

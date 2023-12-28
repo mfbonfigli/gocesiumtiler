@@ -1,10 +1,11 @@
 package unit
 
 import (
-	"github.com/mfbonfigli/gocesiumtiler/internal/converters/coordinate/proj4_coordinate_converter"
-	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 	"math"
 	"testing"
+
+	"github.com/mfbonfigli/gocesiumtiler/internal/converters/coordinate/proj4_coordinate_converter"
+	"github.com/mfbonfigli/gocesiumtiler/internal/geometry"
 )
 
 var coordinateConverter = proj4_coordinate_converter.NewProj4CoordinateConverter()
@@ -22,10 +23,10 @@ func TestConvertsCoordinate(t *testing.T) {
 		toleranceXY float64
 		toleranceZ  float64
 	}{
-		{491880.85, 4576930.54, 10.0, 14.902954, 41.343825, 10.0, 32633, 4326, 5E-7, 0.0},
-		{-121.1392808, 44.6588803, 10.0, -121.140535, 44.658728, 10.0, 4267, 4326, 5E-7, 0.0},
-		{504544.56, 4848085.02, 10.0, -116.9435192, 43.7858081, 10.0, 2955, 4326, 5E-7, 0.0},
-		{504544.56, 4848085.02, 0.0, -2089741.61, -4111363.09, 4390941.2622281, 2955, 4978, 5E-3, 5E-3},
+		{491880.85, 4576930.54, 10.0, 14.902954, 41.343825, 10.0, 32633, 4326, 5e-7, 0.0},
+		{-121.1392808, 44.6588803, 10.0, -121.140535, 44.658728, 10.0, 4267, 4326, 5e-7, 0.0},
+		{504544.56, 4848085.02, 10.0, -116.9435192, 43.7858081, 10.0, 2955, 4326, 5e-7, 0.0},
+		{504544.56, 4848085.02, 0.0, -2089741.61, -4111363.09, 4390941.2622281, 2955, 4978, 5e-3, 5e-3},
 	}
 
 	for _, data := range testData {
@@ -134,7 +135,7 @@ func TestConvertsFrom4326toWGS84Cartesian(t *testing.T) {
 		t.Errorf("Unexpected error occurred: %s", err.Error())
 	}
 
-	if math.Abs(output.X-xExpected) > 5E-3 {
+	if math.Abs(output.X-xExpected) > 5e-3 {
 		t.Errorf(
 			"Expected X: %.2f, got X:%.2f",
 			xExpected,
@@ -142,7 +143,7 @@ func TestConvertsFrom4326toWGS84Cartesian(t *testing.T) {
 		)
 	}
 
-	if math.Abs(output.Y-yExpected) > 5E-3 {
+	if math.Abs(output.Y-yExpected) > 5e-3 {
 		t.Errorf(
 			"Expected Y:%.2f, got Y:%.2f",
 			yExpected,
@@ -150,7 +151,7 @@ func TestConvertsFrom4326toWGS84Cartesian(t *testing.T) {
 		)
 	}
 
-	if math.Abs(output.Z-zExpected) > 5E-3 {
+	if math.Abs(output.Z-zExpected) > 5e-3 {
 		t.Errorf(
 			"Expected Z:%.2f, got Z:%.2f",
 			zExpected,
@@ -179,6 +180,7 @@ func TestConvert326322DBoundingboxToWGS84Region(t *testing.T) {
 	boundingBoxOutput, err := coordinateConverter.Convert2DBoundingboxToWGS84Region(
 		bbox,
 		32632,
+		0, 0, 0,
 	)
 
 	output := boundingBoxOutput.GetAsArray()
@@ -187,7 +189,7 @@ func TestConvert326322DBoundingboxToWGS84Region(t *testing.T) {
 		t.Errorf("Unexpected error occurred: %s", err.Error())
 	}
 
-	if math.Abs(output[0]-xMinExpected) > 1E-8 {
+	if math.Abs(output[0]-xMinExpected) > 1e-8 {
 		t.Errorf(
 			"Expected X min:%.8f, got X min:%.8f",
 			xMinExpected,
@@ -195,7 +197,7 @@ func TestConvert326322DBoundingboxToWGS84Region(t *testing.T) {
 		)
 	}
 
-	if math.Abs(output[1]-yMinExpected) > 1E-8 {
+	if math.Abs(output[1]-yMinExpected) > 1e-8 {
 		t.Errorf(
 			"Expected Y min:%.8f, got Y min:%.8f",
 			yMinExpected,
@@ -203,7 +205,7 @@ func TestConvert326322DBoundingboxToWGS84Region(t *testing.T) {
 		)
 	}
 
-	if math.Abs(output[4]-zMinExpected) > 1E-8 {
+	if math.Abs(output[4]-zMinExpected) > 1e-8 {
 		t.Errorf(
 			"Expected Z min:%.8f, got Z min:%.8f",
 			zMinExpected,
@@ -211,7 +213,7 @@ func TestConvert326322DBoundingboxToWGS84Region(t *testing.T) {
 		)
 	}
 
-	if math.Abs(output[2]-xMaxExpected) > 1E-8 {
+	if math.Abs(output[2]-xMaxExpected) > 1e-8 {
 		t.Errorf(
 			"Expected X max:%.8f, got X max:%.8f",
 			xMaxExpected,
@@ -219,7 +221,7 @@ func TestConvert326322DBoundingboxToWGS84Region(t *testing.T) {
 		)
 	}
 
-	if math.Abs(output[3]-yMaxExpected) > 1E-8 {
+	if math.Abs(output[3]-yMaxExpected) > 1e-8 {
 		t.Errorf(
 			"Expected Y max:%.8f, got Y max:%.8f",
 			yMaxExpected,
@@ -227,7 +229,7 @@ func TestConvert326322DBoundingboxToWGS84Region(t *testing.T) {
 		)
 	}
 
-	if math.Abs(output[5]-zMaxExpected) > 1E-8 {
+	if math.Abs(output[5]-zMaxExpected) > 1e-8 {
 		t.Errorf(
 			"Expected Z max:%.8f, got Z max:%.8f",
 			zMaxExpected,

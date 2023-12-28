@@ -13,8 +13,8 @@ type gridCell struct {
 }
 
 // returns the spatial index component associated to a given dimension (e.g. X or Y or Z) coordinate value
-func getDimensionIndex(dimensionValue float64, size float64) int {
-	return int(math.Floor(dimensionValue / size))
+func getDimensionIndex(dimensionValue float32, size float64) int {
+	return int(math.Floor(float64(dimensionValue) / size))
 }
 
 // returns the cell center X,Y,Z coordinates from the spatial index of the cell and the cell size
@@ -64,8 +64,8 @@ func (gc *gridCell) getDistanceFromCenter(point *data.Point, x int, y int, z int
 	xc, yc, zc := gc.getCellCenter(x, y, z, size)
 
 	return math.Sqrt(
-		math.Pow(point.X-xc, 2) +
-			math.Pow(point.Y-yc, 2) +
-			math.Pow(point.Z-zc, 2),
+		math.Pow(float64(point.X)-xc, 2) +
+			math.Pow(float64(point.Y)-yc, 2) +
+			math.Pow(float64(point.Z)-zc, 2),
 	)
 }

@@ -1,11 +1,12 @@
 package point_loader
 
 import (
-	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 	"math"
 	"math/rand"
 	"sync"
 	"sync/atomic"
+
+	"github.com/mfbonfigli/gocesiumtiler/internal/data"
 )
 
 // Stores points and returns them randomly
@@ -47,7 +48,9 @@ func (eb *RandomLoader) GetNext() (*data.Point, bool) {
 }
 
 func (eb *RandomLoader) InitializeLoader() {
-	rand.Shuffle(len(eb.fullyRandomList), func(i, j int) { eb.fullyRandomList[i], eb.fullyRandomList[j] = eb.fullyRandomList[j], eb.fullyRandomList[i] })
+	rand.Shuffle(len(eb.fullyRandomList), func(i, j int) {
+		eb.fullyRandomList[i], eb.fullyRandomList[j] = eb.fullyRandomList[j], eb.fullyRandomList[i]
+	})
 	eb.currentKeyIndex = -1
 }
 

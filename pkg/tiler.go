@@ -116,7 +116,7 @@ func (tiler *Tiler) exportTreeAsTileset(opts *tiler.TilerOptions, octree octree.
 	// add producer to waitgroup and launch producer goroutine
 	waitGroup.Add(1)
 
-	producer := io.NewStandardProducer(opts.Output, subfolder, opts)
+	producer := io.NewStandardProducer(opts.Output, subfolder, opts, octree)
 	go producer.Produce(workChannel, &waitGroup, octree.GetRootNode())
 
 	// add consumers to waitgroup and launch them

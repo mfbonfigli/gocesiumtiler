@@ -21,6 +21,8 @@ const internalCoordinateEpsgCode = 3395
 // Represents an GridTree of points and contains all information needed
 // to propagate points in the tree
 type GridTree struct {
+	offX, offY, offZ    float64
+	offsetInit          bool
 	rootNode            octree.INode
 	built               bool
 	maxCellSize         float64
@@ -94,12 +96,24 @@ func (t *GridTree) getPointFromRawData(coordinate *geometry.Coordinate, r uint8,
 			Z: z,
 		},
 	)
+	x := worldMercatorCoords.X
+	y := worldMercatorCoords.Y
+	z = worldMercatorCoords.Z
+	if !t.offsetInit {
+		t.offX = x
+		t.offY = y
+		t.offZ = z
+		t.offsetInit = true
+	}
+	x -= t.offX
+	y -= t.offY
+	z -= t.offZ
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return data.NewPoint(worldMercatorCoords.X, worldMercatorCoords.Y, worldMercatorCoords.Z, r, g, b, intensity, classification)
+	return data.NewPoint(float32(x), float32(y), float32(z), r, g, b, intensity, classification)
 }
 
 func (t *GridTree) init() {
@@ -129,4 +143,8 @@ func (t *GridTree) launchPointLoader(waitGroup *sync.WaitGroup) {
 		}
 	}
 	waitGroup.Done()
+}
+
+func (t *GridTree) GetOffset() (x, y, z float64) {
+	return t.offX, t.offY, t.offZ
 }

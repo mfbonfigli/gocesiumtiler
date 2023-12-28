@@ -31,7 +31,7 @@ func (m *mockCoordinateConverter) ConvertCoordinateSrid(sourceSrid int, targetSr
 	return coord, nil
 }
 
-func (m *mockCoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int) (*geometry.BoundingBox, error) {
+func (m *mockCoordinateConverter) Convert2DBoundingboxToWGS84Region(bbox *geometry.BoundingBox, srid int, offX, offY, offZ float64) (*geometry.BoundingBox, error) {
 	return bbox, nil
 }
 
@@ -72,7 +72,7 @@ func TestTreeAddPointSuccess(t *testing.T) {
 		t.Errorf("Only one point loaded, GetNext should return false")
 	}
 
-	if point.X != x || point.Y != y || point.Z != 2.4 ||
+	if point.X != float32(x) || point.Y != float32(y) || point.Z != float32(2.4) ||
 		point.R != r || point.G != g || point.B != b ||
 		point.Intensity != i || point.Classification != c {
 		t.Errorf("Wrong point data found")

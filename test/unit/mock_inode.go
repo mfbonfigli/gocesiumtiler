@@ -39,7 +39,7 @@ func (mockNode *mockNode) IsEmpty() bool {
 	return mockNode.isEmpty
 }
 func (mockNode *mockNode) GetBoundingBoxRegion(converter converters.CoordinateConverter) (*geometry.BoundingBox, error) {
-	reg, err := converter.Convert2DBoundingboxToWGS84Region(mockNode.boundingBox, mockNode.GetInternalSrid())
+	reg, err := converter.Convert2DBoundingboxToWGS84Region(mockNode.boundingBox, mockNode.GetInternalSrid(), 0, 0, 0)
 
 	if err != nil {
 		return nil, err

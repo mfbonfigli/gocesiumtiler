@@ -8,6 +8,7 @@ import (
 )
 
 type ITree interface {
+	GetOffset() (x, y, z float64)
 	Build(las.LasReader) error
 	GetRootNode() INode
 	IsBuilt() bool
@@ -19,14 +20,14 @@ type INode interface {
 	AddDataPoint(element *data.Point)
 	GetInternalSrid() int
 	IsRoot() bool
-	GetBoundingBoxRegion(converter converters.CoordinateConverter) (*geometry.BoundingBox, error)
+	GetBoundingBoxRegion(converter converters.CoordinateConverter, offX, offY, offZ float64) (*geometry.BoundingBox, error)
 	GetChildren() [8]INode
 	GetPoints() []*data.Point
 	IsEmpty() bool
 	NumberOfPoints() int32
 	IsLeaf() bool
 	IsInitialized() bool
-	ComputeGeometricError() float64
+	ComputeGeometricError(offX, offY, offZ float64) float64
 	GetParent() INode
-	GetBoundingBox() *geometry.BoundingBox
+	GetBoundingBox(offX, offY, offZ float64) *geometry.BoundingBox
 }
