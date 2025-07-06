@@ -21,7 +21,7 @@ import (
 // spatial sampling. The grid has a spacing in meters.
 //
 // The build operation will:
-//   - partition the space according to the grid
+//   - partition the space according to the mean of the point coordinates
 //   - given a space partition, retain the point that belongs to the partition and that is closest to its center
 //     unless the maximum depth of the tree is reached, in which case all points are retained.
 //   - store all other points no retained to be used to build the children
@@ -81,6 +81,10 @@ type Node struct {
 	// into the parent coordinates. If nil the identity trasform is implied. For the Root node
 	// of a tree this localToGlobal convers the local coordinates into the EPSG 4978 CRS.
 	localToGlobal *model.Transform
+
+	// splitX, splitY, splitZ store the calculated split points for partitioning children
+	// based on the mean of the point coordinates
+	splitX, splitY, splitZ float64
 
 	sync.Mutex
 }
@@ -169,15 +173,28 @@ func (t *Node) Build() error {
 		return nil
 	}
 
+	// grid size heuristic logic
+	if t.IsRoot() && t.gridSize <= 0 {
+		t.gridSize = math.Sqrt(math.Pow((t.bounds.Xmax-t.bounds.Xmin), 2)+
+			math.Pow((t.bounds.Ymax-t.bounds.Ymin), 2)+
+			math.Pow((t.bounds.Zmax-t.bounds.Zmin), 2)) / 600
+	}
+
 	// First pass of grid sampling
-	winners, losers, numWinners, totalPointsProcessed := t.sampleGrid(t.pts, t.gridSize)
+	winners, losers, numWinners, totalPointsProcessed, averages := t.sampleGrid(t.pts, t.gridSize)
 	t.totalNumPoints = totalPointsProcessed
+
+	// Set split points from averages
+	t.splitX, t.splitY, t.splitZ = averages[0], averages[1], averages[2]
 
 	// Iterative re-sampling if needed
 	if t.maxPointsPerTile > 0 && numWinners > t.maxPointsPerTile {
 		currentGridSize := t.gridSize
-		// Safeguard: do not exceed 2x the initial grid size (which is the parent's grid size)
+		// Safeguard: do not exceed 2x the initial grid size (which is the parent's grid size), unless if it's the root node when we can go up to 20x
 		maxGridSize := t.gridSize * 2
+		if t.IsRoot() {
+			maxGridSize = t.gridSize * 20
+		}
 
 		for numWinners > t.maxPointsPerTile && currentGridSize < maxGridSize {
 			// Estimate new grid size
@@ -190,7 +207,7 @@ func (t *Node) Build() error {
 
 			// Re-sample with the new grid size.
 			// Note: we sample from the 'winners' of the previous iteration.
-			newWinners, newLosers, newNumWinners, _ := t.sampleGrid(winners, newGridSize)
+			newWinners, newLosers, newNumWinners, _, _ := t.sampleGrid(winners, newGridSize)
 			numWinners = newNumWinners
 			currentGridSize = newGridSize
 
@@ -333,7 +350,7 @@ func (t *Node) Children() [8]tree.Node {
 		v := &Node{
 			pts:                  c,
 			childrenPts:          [8]*geom.LinkedPoint{},
-			bounds:               geom.NewBoundingBoxFromParent(t.bounds, i),
+			bounds:               geom.NewBoundingBoxFromParentWithSplits(t.bounds, i, t.splitX, t.splitY, t.splitZ),
 			depth:                t.depth + 1,
 			maxDepth:             t.maxDepth,
 			gridSize:             t.gridSize / 2,
@@ -372,23 +389,23 @@ func (t *Node) IsLeaf() bool {
 }
 
 func (t *Node) GeometricError() float64 {
-	return math.Sqrt(t.gridSize * t.gridSize * 3)
+	return math.Sqrt(t.gridSize*t.gridSize*3) * 2
 }
 
 func (t *Node) getChildrenIndex(p model.Point) int {
-	if float64(p.X) < t.bounds.Xmid && float64(p.Y) < t.bounds.Ymid && float64(p.Z) < t.bounds.Zmid {
+	if float64(p.X) < t.splitX && float64(p.Y) < t.splitY && float64(p.Z) < t.splitZ {
 		return 0
-	} else if float64(p.X) >= t.bounds.Xmid && float64(p.Y) < t.bounds.Ymid && float64(p.Z) < t.bounds.Zmid {
+	} else if float64(p.X) >= t.splitX && float64(p.Y) < t.splitY && float64(p.Z) < t.splitZ {
 		return 1
-	} else if float64(p.X) < t.bounds.Xmid && float64(p.Y) >= t.bounds.Ymid && float64(p.Z) < t.bounds.Zmid {
+	} else if float64(p.X) < t.splitX && float64(p.Y) >= t.splitY && float64(p.Z) < t.splitZ {
 		return 2
-	} else if float64(p.X) >= t.bounds.Xmid && float64(p.Y) >= t.bounds.Ymid && float64(p.Z) < t.bounds.Zmid {
+	} else if float64(p.X) >= t.splitX && float64(p.Y) >= t.splitY && float64(p.Z) < t.splitZ {
 		return 3
-	} else if float64(p.X) < t.bounds.Xmid && float64(p.Y) < t.bounds.Ymid && float64(p.Z) >= t.bounds.Zmid {
+	} else if float64(p.X) < t.splitX && float64(p.Y) < t.splitY && float64(p.Z) >= t.splitZ {
 		return 4
-	} else if float64(p.X) >= t.bounds.Xmid && float64(p.Y) < t.bounds.Ymid && float64(p.Z) >= t.bounds.Zmid {
+	} else if float64(p.X) >= t.splitX && float64(p.Y) < t.splitY && float64(p.Z) >= t.splitZ {
 		return 5
-	} else if float64(p.X) < t.bounds.Xmid && float64(p.Y) >= t.bounds.Ymid && float64(p.Z) >= t.bounds.Zmid {
+	} else if float64(p.X) < t.splitX && float64(p.Y) >= t.splitY && float64(p.Z) >= t.splitZ {
 		return 6
 	}
 	return 7
@@ -404,10 +421,12 @@ func (t *Node) loadPoints(reader las.LasReader, convFactory coor.ConverterFactor
 }
 
 // sampleGrid performs grid sampling on a set of points.
-// It returns the points that are kept (winners), the points that are discarded (losers), the number of winners, and the total number of points processed.
-func (t *Node) sampleGrid(points *geom.LinkedPoint, gridSize float64) (winners, losers *geom.LinkedPoint, numWinners, totalPointsProcessed int) {
+// It returns the points that are kept (winners), the points that are discarded (losers), the number of winners,
+// the total number of points processed, and the averages of all coordinates for mean-based partitioning.
+func (t *Node) sampleGrid(points *geom.LinkedPoint, gridSize float64) (winners, losers *geom.LinkedPoint, numWinners, totalPointsProcessed int, averages []float64) {
 	if points == nil {
-		return nil, nil, 0, 0
+		Xmid, Ymid, Zmid := t.bounds.Center()
+		return nil, nil, 0, 0, []float64{Xmid, Ymid, Zmid}
 	}
 
 	// nX, nY, nZ represent the number of grid cells in each direction, should always be >= 1
@@ -426,9 +445,18 @@ func (t *Node) sampleGrid(points *geom.LinkedPoint, gridSize float64) (winners, 
 	}
 	grid := map[[3]int32]cell{}
 
+	// Variables to calculate averages
+	var sumX, sumY, sumZ float64
+
 	cur := points
 	for cur != nil {
 		totalPointsProcessed++
+
+		// Add to sum for average calculation
+		sumX += float64(cur.Pt.X)
+		sumY += float64(cur.Pt.Y)
+		sumZ += float64(cur.Pt.Z)
+
 		next := cur.Next
 		cur.Next = nil
 
@@ -467,5 +495,12 @@ func (t *Node) sampleGrid(points *geom.LinkedPoint, gridSize float64) (winners, 
 		numWinners++
 	}
 
-	return winners, losers, numWinners, totalPointsProcessed
+	// Calculate averages
+	averages = []float64{
+		sumX / float64(totalPointsProcessed),
+		sumY / float64(totalPointsProcessed),
+		sumZ / float64(totalPointsProcessed),
+	}
+
+	return winners, losers, numWinners, totalPointsProcessed, averages
 }

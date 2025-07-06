@@ -82,7 +82,6 @@ func TestCombinedReaderConcurrency(t *testing.T) {
 			}
 			read++
 		}
-		fmt.Println(read)
 	}
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 5; i++ {

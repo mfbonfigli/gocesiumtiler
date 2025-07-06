@@ -116,7 +116,7 @@ func getFlags(c *cliOpts) []cli.Flag {
 			Name:        "resolution",
 			Aliases:     []string{"r"},
 			Value:       c.resolution,
-			Usage:       "minimum resolution of the 3d tiles, in meters. approximately represets the maximum sampling distance between any two points at the lowest level of detail",
+			Usage:       "minimum resolution of the 3d tiles, in meters. approximately represets the maximum sampling distance between any two points at the lowest level of detail. Zero or negative means automatic estimation of resolution",
 			Destination: &c.resolution,
 		},
 		&cli.Float64Flag{
@@ -195,9 +195,9 @@ func defaultCliOptions() *cliOpts {
 	return &cliOpts{
 		crs:          "",
 		maxDepth:     10,
-		minPoints:    2000,
-		maxPoints:    160000,
-		resolution:   20,
+		minPoints:    10000,
+		maxPoints:    200000,
+		resolution:   0,
 		subsamplePct: 1,
 		zOffset:      0,
 		eightBit:     false,
@@ -219,8 +219,8 @@ func (c *cliOpts) validate() {
 	if c.maxPoints < 0 {
 		log.Fatal("max-points-per-tile should be at least 0 (0 means no limit)")
 	}
-	if c.resolution < 0.1 || c.resolution > 1000 {
-		log.Fatal("resolution should be between 0.1 and 1000 meters")
+	if c.resolution > 1000 {
+		log.Fatal("resolution should be less than 1000 meters. zero or negative means automatic resolution estimation.")
 	}
 	if c.subsamplePct < 0.01 || c.subsamplePct > 1 {
 		log.Fatal("subsample should be a value between 0.01 and 1")
@@ -238,7 +238,7 @@ func (c *cliOpts) print() {
 	fmt.Printf(`*** Execution settings:
 - Source CRS: %s,
 - Max Depth: %d,
-- Resolution: %f meters,
+- Resolution: %f,
 - Min Points per tile: %d,
 - Max Points per tile: %d
 - Z-Offset: %f meters,

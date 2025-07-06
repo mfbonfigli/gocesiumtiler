@@ -136,7 +136,7 @@ func TestGridTreeLoad(t *testing.T) {
 
 func TestGridTreeGeometricError(t *testing.T) {
 	tree := NewTree(WithGridSize(1))
-	expected := math.Sqrt(3)
+	expected := math.Sqrt(3) * 2
 	if actual := tree.GeometricError(); actual != expected {
 		t.Errorf("expected error %v, got %v", expected, actual)
 	}
@@ -335,13 +335,10 @@ func TestGetBoundingBoxRegion(t *testing.T) {
 	expected := geom.BoundingBox{
 		Xmin: -3.680642,
 		Xmax: 26.432066,
-		Xmid: 11.375712,
 		Ymin: -37.327072,
 		Ymax: 0.000000,
-		Ymid: -18.663536,
 		Zmin: -0.758385,
 		Zmax: 3.570191,
-		Zmid: 1.405903,
 	}
 	if diff, err := utils.CompareWithTolerance(bbox.Xmin, expected.Xmin, 1e-6); err != nil {
 		t.Errorf("Xmin diff above threshold: %f, expected %f", diff, bbox.Xmin)
@@ -349,26 +346,17 @@ func TestGetBoundingBoxRegion(t *testing.T) {
 	if diff, err := utils.CompareWithTolerance(bbox.Xmax, expected.Xmax, 1e-6); err != nil {
 		t.Errorf("Xmax diff above threshold: %f, expected %f", diff, bbox.Xmax)
 	}
-	if diff, err := utils.CompareWithTolerance(bbox.Xmid, expected.Xmid, 1e-6); err != nil {
-		t.Errorf("Xmid diff above threshold: %f, expected %f", diff, bbox.Xmid)
-	}
 	if diff, err := utils.CompareWithTolerance(bbox.Ymin, expected.Ymin, 1e-6); err != nil {
 		t.Errorf("Ymin diff above threshold: %f, expected %f", diff, bbox.Ymin)
 	}
 	if diff, err := utils.CompareWithTolerance(bbox.Ymax, expected.Ymax, 1e-6); err != nil {
 		t.Errorf("Ymax diff above threshold: %f, expected %f", diff, bbox.Ymax)
 	}
-	if diff, err := utils.CompareWithTolerance(bbox.Ymid, expected.Ymid, 1e-6); err != nil {
-		t.Errorf("Ymid diff above threshold: %f, expected %f", diff, bbox.Ymid)
-	}
 	if diff, err := utils.CompareWithTolerance(bbox.Zmin, expected.Zmin, 1e-6); err != nil {
 		t.Errorf("Zmin diff above threshold: %f, expected %f", diff, bbox.Zmin)
 	}
 	if diff, err := utils.CompareWithTolerance(bbox.Zmax, expected.Zmax, 1e-6); err != nil {
 		t.Errorf("Zmax diff above threshold: %f, expected %f", diff, bbox.Zmax)
-	}
-	if diff, err := utils.CompareWithTolerance(bbox.Zmid, expected.Zmid, 1e-6); err != nil {
-		t.Errorf("Zmid diff above threshold: %f, expected %f", diff, bbox.Zmid)
 	}
 }
 
