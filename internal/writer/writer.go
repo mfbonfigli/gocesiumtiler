@@ -2,10 +2,16 @@ package writer
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"math"
+	"os"
+	"path"
+	"strconv"
 	"sync"
 
 	"github.com/mfbonfigli/gocesiumtiler/v2/internal/tree"
+	"github.com/mfbonfigli/gocesiumtiler/v2/tiler/model"
 	"github.com/mfbonfigli/gocesiumtiler/v2/version"
 )
 
@@ -19,6 +25,7 @@ type StandardWriter struct {
 	bufferRatio  int
 	basePath     string
 	version      version.TilesetVersion
+	squash       bool
 	producerFunc func(basepath, folder string) Producer
 	consumerFunc func(version.TilesetVersion) Consumer
 }
@@ -30,16 +37,19 @@ func NewWriter(basePath string, options ...func(*StandardWriter)) (*StandardWrit
 		bufferRatio:  5,
 		version:      version.TilesetVersion_1_0,
 		producerFunc: NewStandardProducer,
-		consumerFunc: func(v version.TilesetVersion) Consumer {
-			if v == version.TilesetVersion_1_0 {
-				return NewStandardConsumer(WithGeometryEncoder(NewPntsEncoder()))
-			}
-			return NewStandardConsumer(WithGeometryEncoder(NewGltfEncoder()))
-		},
 	}
 	for _, optFn := range options {
 		optFn(w)
 	}
+
+	// Set consumerFunc after options are applied so we can use the squash flag
+	w.consumerFunc = func(v version.TilesetVersion) Consumer {
+		if v == version.TilesetVersion_1_0 {
+			return NewStandardConsumer(WithGeometryEncoder(NewPntsEncoder()), WithSkipTileset(w.squash))
+		}
+		return NewStandardConsumer(WithGeometryEncoder(NewGltfEncoder()), WithSkipTileset(w.squash))
+	}
+
 	return w, nil
 }
 
@@ -62,6 +72,13 @@ func WithBufferRatio(n int) func(*StandardWriter) {
 func WithTilesetVersion(v version.TilesetVersion) func(*StandardWriter) {
 	return func(w *StandardWriter) {
 		w.version = v
+	}
+}
+
+// WithSquash sets whether to generate a single tileset.json file instead of multiple files
+func WithSquash(squash bool) func(*StandardWriter) {
+	return func(w *StandardWriter) {
+		w.squash = squash
 	}
 }
 
@@ -112,5 +129,104 @@ func (w *StandardWriter) Write(t tree.Tree, folderName string, ctx context.Conte
 	if len(errs) != 0 {
 		return errs[0]
 	}
+
+	// If squash mode is enabled, generate the single tileset.json file
+	if w.squash {
+		return w.writeSquashedTileset(t, folderName)
+	}
+
 	return nil
+}
+
+// writeSquashedTileset generates a single tileset.json file with all nodes
+func (w *StandardWriter) writeSquashedTileset(t tree.Tree, folderName string) error {
+	rootTile := w.buildTileTree(t.RootNode(), "")
+
+	tileset := Tileset{
+		Asset: Asset{
+			Version: w.version,
+		},
+		GeometricError: t.RootNode().GeometricError(),
+		Root:           rootTile,
+	}
+
+	file, err := json.Marshal(tileset)
+	if err != nil {
+		return fmt.Errorf("failed to marshal tileset: %w", err)
+	}
+
+	return os.WriteFile(path.Join(w.basePath, folderName, "tileset.json"), file, 0644)
+}
+
+// buildTileTree builds the complete tile hierarchy for squashed mode
+func (w *StandardWriter) buildTileTree(node tree.Node, parentPath string) Root {
+	reg := node.BoundingBox()
+
+	var cMajorTransformPtr *[16]float64
+	if trans := node.ToParentCRS(); trans != nil && *trans != model.IdentityTransform {
+		cMajor := trans.ForwardColumnMajor()
+		cMajorTransformPtr = &cMajor
+	}
+
+	root := Root{
+		BoundingVolume: BoundingVolume{Box: reg.AsCesiumBox()},
+		GeometricError: node.GeometricError(),
+		Refine:         "ADD",
+		Transform:      cMajorTransformPtr,
+	}
+
+	// Add content if node has points
+	if node.TotalNumberOfPoints() > 0 {
+		filename := "content.pnts"
+		if w.version == version.TilesetVersion_1_1 {
+			filename = "content.glb"
+		}
+		if parentPath != "" {
+			root.Content = &Content{Url: path.Join(parentPath, filename)}
+		} else {
+			root.Content = &Content{Url: filename}
+		}
+	}
+
+	// Add children recursively
+	for i, child := range node.Children() {
+		if child != nil && child.TotalNumberOfPoints() > 0 {
+			childPath := path.Join(parentPath, strconv.Itoa(i))
+			childTile := w.buildChildTile(child, childPath)
+			root.Children = append(root.Children, childTile)
+		}
+	}
+
+	return root
+}
+
+// buildChildTile builds a child tile for squashed mode
+func (w *StandardWriter) buildChildTile(node tree.Node, nodePath string) *Child {
+	reg := node.BoundingBox()
+
+	child := &Child{
+		BoundingVolume: BoundingVolume{Box: reg.AsCesiumBox()},
+		GeometricError: node.GeometricError(),
+		Refine:         "ADD",
+	}
+
+	// Add content if node has points
+	if node.TotalNumberOfPoints() > 0 {
+		filename := "content.pnts"
+		if w.version == version.TilesetVersion_1_1 {
+			filename = "content.glb"
+		}
+		child.Content = &Content{Url: path.Join(nodePath, filename)}
+	}
+
+	// Add children recursively
+	for i, childNode := range node.Children() {
+		if childNode != nil && childNode.TotalNumberOfPoints() > 0 {
+			childPath := path.Join(nodePath, strconv.Itoa(i))
+			grandChild := w.buildChildTile(childNode, childPath)
+			child.Children = append(child.Children, grandChild)
+		}
+	}
+
+	return child
 }

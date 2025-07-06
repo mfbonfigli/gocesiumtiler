@@ -86,7 +86,7 @@ func TestConsume(t *testing.T) {
 		GeometricError: 20,
 		Root: Root{
 			Children: nil,
-			Content: Content{
+			Content: &Content{
 				Url: "content.pnts",
 			},
 			BoundingVolume: BoundingVolume{
@@ -200,7 +200,7 @@ func TestConsumeGltf(t *testing.T) {
 		GeometricError: 20,
 		Root: Root{
 			Children: nil,
-			Content: Content{
+			Content: &Content{
 				Url: "content.glb",
 			},
 			BoundingVolume: BoundingVolume{

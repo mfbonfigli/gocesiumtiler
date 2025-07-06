@@ -27,7 +27,8 @@ type Consumer interface {
 }
 
 type StandardConsumer struct {
-	encoder GeometryEncoder
+	encoder     GeometryEncoder
+	skipTileset bool
 }
 
 func NewStandardConsumer(optFn ...func(*StandardConsumer)) Consumer {
@@ -44,6 +45,14 @@ func NewStandardConsumer(optFn ...func(*StandardConsumer)) Consumer {
 func WithGeometryEncoder(e GeometryEncoder) func(*StandardConsumer) {
 	return func(c *StandardConsumer) {
 		c.encoder = e
+	}
+}
+
+// WithSkipTileset sets whether to skip generating tileset.json files
+// useful for example if the tileset is generated externally (squash)
+func WithSkipTileset(skip bool) func(*StandardConsumer) {
+	return func(c *StandardConsumer) {
+		c.skipTileset = skip
 	}
 }
 
@@ -94,7 +103,7 @@ func (c *StandardConsumer) doWork(workUnit *WorkUnit) error {
 		return err
 	}
 	// as an edge case we could have a leaf root node. This needs a tileset.json even if it's leaf.
-	if !workUnit.Node.IsLeaf() || workUnit.Node.IsRoot() {
+	if !c.skipTileset && (!workUnit.Node.IsLeaf() || workUnit.Node.IsRoot()) {
 		// if the node has children also writes the tileset.json file
 		err := c.writeTilesetJsonFile(*workUnit)
 		if err != nil {
@@ -168,7 +177,7 @@ func (c *StandardConsumer) generateTilesetRoot(node tree.Node) (Root, error) {
 	}
 
 	return Root{
-		Content:        Content{c.encoder.Filename()},
+		Content:        &Content{c.encoder.Filename()},
 		BoundingVolume: BoundingVolume{Box: reg.AsCesiumBox()},
 		GeometricError: node.GeometricError(),
 		Refine:         "ADD",
@@ -186,11 +195,12 @@ func (c *StandardConsumer) generateTileset(node tree.Node, root Root) Tileset {
 	return tileset
 }
 
-func (c *StandardConsumer) generateTilesetChildren(node tree.Node) ([]Child, error) {
-	var children []Child
+func (c *StandardConsumer) generateTilesetChildren(node tree.Node) ([]*Child, error) {
+	var children []*Child
 	for i, child := range node.Children() {
 		if c.nodeContainsPoints(child) {
-			children = append(children, c.generateTilesetChild(child, i))
+			childTile := c.generateTilesetChild(child, i)
+			children = append(children, &childTile)
 		}
 	}
 	return children, nil
@@ -206,7 +216,7 @@ func (c *StandardConsumer) generateTilesetChild(child tree.Node, childIndex int)
 	if child.IsLeaf() {
 		filename = c.encoder.Filename()
 	}
-	childJson.Content = Content{
+	childJson.Content = &Content{
 		Url: strconv.Itoa(childIndex) + "/" + filename,
 	}
 	reg := child.BoundingBox()

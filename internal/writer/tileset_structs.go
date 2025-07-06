@@ -15,15 +15,16 @@ type BoundingVolume struct {
 }
 
 type Child struct {
-	Content        Content        `json:"content"`
+	Content        *Content       `json:"content,omitempty"`
 	BoundingVolume BoundingVolume `json:"boundingVolume"`
 	GeometricError float64        `json:"geometricError"`
 	Refine         string         `json:"refine"`
+	Children       []*Child       `json:"children,omitempty"`
 }
 
 type Root struct {
-	Children       []Child        `json:"children"`
-	Content        Content        `json:"content"`
+	Children       []*Child       `json:"children,omitempty"`
+	Content        *Content       `json:"content,omitempty"`
 	BoundingVolume BoundingVolume `json:"boundingVolume"`
 	GeometricError float64        `json:"geometricError"`
 	Refine         string         `json:"refine"`
