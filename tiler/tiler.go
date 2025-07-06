@@ -47,6 +47,7 @@ func NewGoCesiumTiler() (*GoCesiumTiler, error) {
 				grid.WithMaxDepth(opts.maxDepth),
 				grid.WithLoadWorkersNumber(opts.numWorkers),
 				grid.WithMinPointsPerChildren(opts.minPointsPerTile),
+				grid.WithMaxPointsPerTile(opts.MaxPointsPerTile),
 			)
 		},
 		writerProvider: func(folder string, opts *TilerOptions) (writer.Writer, error) {

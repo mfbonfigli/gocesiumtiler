@@ -3,6 +3,7 @@ package grid
 import (
 	"context"
 	"math"
+	"math/rand"
 	"sync"
 
 	"github.com/mfbonfigli/gocesiumtiler/v2/internal/conv/coor"
@@ -72,6 +73,10 @@ type Node struct {
 	// if less its points will be rolled up to the parent
 	minPointsPerChildren int
 
+	// maxPointsPerTile is the maximum number of points a tile can contain.
+	// If a tile contains more points, a subsampling strategy is applied.
+	maxPointsPerTile int
+
 	// localToGlobal is a pointer to the Transform matrix that convers this node coordinates
 	// into the parent coordinates. If nil the identity trasform is implied. For the Root node
 	// of a tree this localToGlobal convers the local coordinates into the EPSG 4978 CRS.
@@ -89,7 +94,8 @@ func NewTree(opts ...func(*Node)) *Node {
 		childrenBuilt:        false,
 		gridSize:             1,
 		loadWorkersNumber:    1,
-		minPointsPerChildren: 10000,
+		minPointsPerChildren: 2000,
+		maxPointsPerTile:     160000, // 0 means no limit
 		localToGlobal:        nil,
 	}
 	for _, optFn := range opts {
@@ -128,6 +134,14 @@ func WithMinPointsPerChildren(num int) func(t *Node) {
 	}
 }
 
+// WithMaxPointsPerTile sets the maximum number of points a tile can contain.
+// If a tile contains more points, a subsampling strategy is applied.
+func WithMaxPointsPerTile(num int) func(t *Node) {
+	return func(t *Node) {
+		t.maxPointsPerTile = num
+	}
+}
+
 // Loads points into the tree from the given las converting them into local coordinates and setting the node transform correctly
 func (t *Node) Load(reader las.LasReader, coorConv coor.ConverterFactory, mut mutator.Mutator, ctx context.Context) error {
 	return t.loadPoints(reader, coorConv, mut, ctx)
@@ -155,117 +169,136 @@ func (t *Node) Build() error {
 		return nil
 	}
 
-	// nX, nY, nZ represent the number of grid cells in each direction, should always be >= 1
-	nX := math.Ceil((t.bounds.Xmax - t.bounds.Xmin) / t.gridSize)
-	nY := math.Ceil((t.bounds.Ymax - t.bounds.Ymin) / t.gridSize)
-	nZ := math.Ceil((t.bounds.Zmax - t.bounds.Zmin) / t.gridSize)
+	// First pass of grid sampling
+	winners, losers, numWinners, totalPointsProcessed := t.sampleGrid(t.pts, t.gridSize)
+	t.totalNumPoints = totalPointsProcessed
 
-	// these are the actual gridSizes after the rounding
-	gridSizeX := (t.bounds.Xmax - t.bounds.Xmin) / nX
-	gridSizeY := (t.bounds.Ymax - t.bounds.Ymin) / nY
-	gridSizeZ := (t.bounds.Zmax - t.bounds.Zmin) / nZ
+	// Iterative re-sampling if needed
+	if t.maxPointsPerTile > 0 && numWinners > t.maxPointsPerTile {
+		currentGridSize := t.gridSize
+		// Safeguard: do not exceed 2x the initial grid size (which is the parent's grid size)
+		maxGridSize := t.gridSize * 2
 
-	// we need to keep track of the closest point to each grid cell center
-	// define an inner type so that it's not leaked outside the scope of the build method
-	type cell struct {
-		pt   *geom.LinkedPoint
-		dist float64
-	}
+		for numWinners > t.maxPointsPerTile && currentGridSize < maxGridSize {
+			// Estimate new grid size
+			scalingFactor := math.Pow(float64(numWinners)/float64(t.maxPointsPerTile), 1.0/3.0) * 1.1
+			newGridSize := currentGridSize * scalingFactor
 
-	childrenCount := [8]int{}
+			if newGridSize > maxGridSize {
+				newGridSize = maxGridSize
+			}
 
-	// start from the first point
-	cur := t.pts
+			// Re-sample with the new grid size.
+			// Note: we sample from the 'winners' of the previous iteration.
+			newWinners, newLosers, newNumWinners, _ := t.sampleGrid(winners, newGridSize)
+			numWinners = newNumWinners
+			currentGridSize = newGridSize
 
-	// the winners (i.e. closest points to each cell center are stored in a map)
-	// the key to the map is a [3]float array of the grid cell center.
-	grid := map[[3]int32]cell{}
-
-	for cur != nil {
-		// keep track of the number of points seen overall
-		t.totalNumPoints++
-		// store the next point for the next iteration in the loop,
-		// then detach the current point from the linked list by wiping the 'next' pointer
-		next := cur.Next
-		cur.Next = nil
-
-		// compute 3D integer coordinates of the cell the point falls into
-		iX := int32(math.Min(math.Max(1, math.Ceil((float64(cur.Pt.X)-t.bounds.Xmin)/gridSizeX)), float64(nX)))
-		iY := int32(math.Min(math.Max(1, math.Ceil((float64(cur.Pt.Y)-t.bounds.Ymin)/gridSizeY)), float64(nY)))
-		iZ := int32(math.Min(math.Max(1, math.Ceil((float64(cur.Pt.Z)-t.bounds.Zmin)/gridSizeZ)), float64(nZ)))
-		// this is the unique id of the cell the point belongs to
-		cellIndex := [3]int32{iX, iY, iZ}
-
-		// compute the cell center coordinates
-		cX := t.bounds.Xmin + float64(iX-1)*gridSizeX + gridSizeX/2
-		cY := t.bounds.Ymin + float64(iY-1)*gridSizeY + gridSizeY/2
-		cZ := t.bounds.Zmin + float64(iZ-1)*gridSizeZ + gridSizeZ/2
-
-		// get the (squared, to save some CPU) distance of the point to the cell center
-		curDist := (cX-float64(cur.Pt.X))*(cX-float64(cur.Pt.X)) + (cY-float64(cur.Pt.Y))*(cY-float64(cur.Pt.Y)) + (cZ-float64(cur.Pt.Z))*(cZ-float64(cur.Pt.Z))
-
-		// find if we already have a "winner" (closest point) for the identified grid cell
-		oldWinner, ok := grid[cellIndex]
-		if !ok {
-			// no winner? then the current point is the new cell winner
-			grid[cellIndex] = cell{pt: cur, dist: curDist}
-		} else {
-			// we have a winner, check if it loses against the current point
-			if curDist < oldWinner.dist {
-				// current point wins, old winner needs to go
-				grid[cellIndex] = cell{pt: cur, dist: curDist}
-				// oldWinner needs to be moved to the linked list of the child octant it belongs to
-				idx := t.getChildrenIndex(oldWinner.pt.Pt)
-				childrenCount[idx]++
-
-				if t.childrenPts[idx] == nil {
-					t.childrenPts[idx] = oldWinner.pt
+			// Add the new losers to the main losers list
+			if newLosers != nil {
+				// Find the end of the main losers list
+				end := losers
+				if end != nil {
+					for end.Next != nil {
+						end = end.Next
+					}
+					end.Next = newLosers
 				} else {
-					oldWinner.pt.Next = t.childrenPts[idx]
-					t.childrenPts[idx] = oldWinner.pt
-				}
-			} else {
-				// oldWinner wins against current point, so just push current point to the
-				// relevant octant list
-				idx := t.getChildrenIndex(cur.Pt)
-				childrenCount[idx]++
-				if t.childrenPts[idx] == nil {
-					t.childrenPts[idx] = cur
-				} else {
-					cur.Next = t.childrenPts[idx]
-					t.childrenPts[idx] = cur
+					losers = newLosers
 				}
 			}
+			winners = newWinners
 		}
-		// update cur with the next one
+
+		// Fallback: if still too many points, do random sampling
+		if numWinners > t.maxPointsPerTile {
+			// Convert linked list to slice for shuffling
+			winnerSlice := make([]*geom.LinkedPoint, 0, numWinners)
+			cur := winners
+			for cur != nil {
+				winnerSlice = append(winnerSlice, cur)
+				cur = cur.Next
+			}
+
+			// Shuffle and split
+			rand.Shuffle(len(winnerSlice), func(i, j int) {
+				winnerSlice[i], winnerSlice[j] = winnerSlice[j], winnerSlice[i]
+			})
+
+			// Re-link the winners
+			winners = nil
+			for i := 0; i < t.maxPointsPerTile; i++ {
+				winnerSlice[i].Next = winners
+				winners = winnerSlice[i]
+			}
+			numWinners = t.maxPointsPerTile
+
+			// Create a new losers list from the remaining points
+			var newLosers *geom.LinkedPoint
+			for i := t.maxPointsPerTile; i < len(winnerSlice); i++ {
+				winnerSlice[i].Next = newLosers
+				newLosers = winnerSlice[i]
+			}
+			// Prepend the new losers to the existing losers list
+			if losers != nil {
+				end := newLosers
+				for end.Next != nil {
+					end = end.Next
+				}
+				end.Next = losers
+			}
+			losers = newLosers
+		}
+
+		t.gridSize = currentGridSize
+	}
+
+	t.pts = winners
+	t.numPoints = numWinners
+
+	// Distribute losers to children
+	cur := losers
+	for cur != nil {
+		next := cur.Next
+		cur.Next = nil
+		idx := t.getChildrenIndex(cur.Pt)
+		if t.childrenPts[idx] == nil {
+			t.childrenPts[idx] = cur
+		} else {
+			cur.Next = t.childrenPts[idx]
+			t.childrenPts[idx] = cur
+		}
 		cur = next
 	}
 
-	// now we need to extract all points in the map as they are
-	// the ones left belonging to this node
-	t.pts = nil
-	for _, pt := range grid {
-		point := pt.pt
-		point.Next = t.pts
-		t.pts = point
-		t.numPoints++
-	}
-
-	// are we done? Not really. If there are children with a number of points < minPointsPerChildren
-	// then merge them with the current node
-	for i, count := range childrenCount {
+	// Roll up children with too few points, but respect maxPointsPerTile
+	for i, c := range t.childrenPts {
+		if c == nil {
+			continue
+		}
+		count := 0
+		cur := c
+		for cur != nil {
+			count++
+			cur = cur.Next
+		}
 		if count < t.minPointsPerChildren {
-			current := t.childrenPts[i]
-			for current != nil {
-				next := current.Next
-				current.Next = t.pts
-				t.pts = current
-				current = next
-				t.numPoints++
+			// Check if there is enough capacity in the parent tile
+			capacity := t.maxPointsPerTile - t.numPoints
+			if t.maxPointsPerTile == 0 || count <= capacity {
+				// Add child points to current node
+				end := c
+				for end.Next != nil {
+					end = end.Next
+				}
+				end.Next = t.pts
+				t.pts = c
+				t.numPoints += count
+				t.childrenPts[i] = nil // Child is now empty
 			}
-			t.childrenPts[i] = nil
 		}
 	}
+
 	t.built = true
 	return nil
 }
@@ -306,6 +339,7 @@ func (t *Node) Children() [8]tree.Node {
 			gridSize:             t.gridSize / 2,
 			childrenBuilt:        false,
 			minPointsPerChildren: t.minPointsPerChildren,
+			maxPointsPerTile:     t.maxPointsPerTile,
 			localToGlobal:        nil,
 		}
 		// Children MUST be built before returned
@@ -367,4 +401,71 @@ func (t *Node) loadPoints(reader las.LasReader, convFactory coor.ConverterFactor
 		workers:             t.loadWorkersNumber,
 	}
 	return l.load(t, reader, ctx)
+}
+
+// sampleGrid performs grid sampling on a set of points.
+// It returns the points that are kept (winners), the points that are discarded (losers), the number of winners, and the total number of points processed.
+func (t *Node) sampleGrid(points *geom.LinkedPoint, gridSize float64) (winners, losers *geom.LinkedPoint, numWinners, totalPointsProcessed int) {
+	if points == nil {
+		return nil, nil, 0, 0
+	}
+
+	// nX, nY, nZ represent the number of grid cells in each direction, should always be >= 1
+	nX := math.Ceil((t.bounds.Xmax - t.bounds.Xmin) / gridSize)
+	nY := math.Ceil((t.bounds.Ymax - t.bounds.Ymin) / gridSize)
+	nZ := math.Ceil((t.bounds.Zmax - t.bounds.Zmin) / gridSize)
+
+	// these are the actual gridSizes after the rounding
+	gridSizeX := (t.bounds.Xmax - t.bounds.Xmin) / nX
+	gridSizeY := (t.bounds.Ymax - t.bounds.Ymin) / nY
+	gridSizeZ := (t.bounds.Zmax - t.bounds.Zmin) / nZ
+
+	type cell struct {
+		pt   *geom.LinkedPoint
+		dist float64
+	}
+	grid := map[[3]int32]cell{}
+
+	cur := points
+	for cur != nil {
+		totalPointsProcessed++
+		next := cur.Next
+		cur.Next = nil
+
+		// compute 3D integer coordinates of the cell the point falls into
+		iX := int32(math.Min(math.Max(1, math.Ceil((float64(cur.Pt.X)-t.bounds.Xmin)/gridSizeX)), float64(nX)))
+		iY := int32(math.Min(math.Max(1, math.Ceil((float64(cur.Pt.Y)-t.bounds.Ymin)/gridSizeY)), float64(nY)))
+		iZ := int32(math.Min(math.Max(1, math.Ceil((float64(cur.Pt.Z)-t.bounds.Zmin)/gridSizeZ)), float64(nZ)))
+		cellIndex := [3]int32{iX, iY, iZ}
+
+		// compute the cell center coordinates
+		cX := t.bounds.Xmin + float64(iX-1)*gridSizeX + gridSizeX/2
+		cY := t.bounds.Ymin + float64(iY-1)*gridSizeY + gridSizeY/2
+		cZ := t.bounds.Zmin + float64(iZ-1)*gridSizeZ + gridSizeZ/2
+
+		curDist := (cX-float64(cur.Pt.X))*(cX-float64(cur.Pt.X)) + (cY-float64(cur.Pt.Y))*(cY-float64(cur.Pt.Y)) + (cZ-float64(cur.Pt.Z))*(cZ-float64(cur.Pt.Z))
+
+		oldWinner, ok := grid[cellIndex]
+		if !ok {
+			grid[cellIndex] = cell{pt: cur, dist: curDist}
+		} else {
+			if curDist < oldWinner.dist {
+				grid[cellIndex] = cell{pt: cur, dist: curDist}
+				oldWinner.pt.Next = losers
+				losers = oldWinner.pt
+			} else {
+				cur.Next = losers
+				losers = cur
+			}
+		}
+		cur = next
+	}
+
+	for _, c := range grid {
+		c.pt.Next = winners
+		winners = c.pt
+		numWinners++
+	}
+
+	return winners, losers, numWinners, totalPointsProcessed
 }

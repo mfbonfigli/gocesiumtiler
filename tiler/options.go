@@ -32,6 +32,7 @@ type TilerOptions struct {
 	eightBitColors   bool
 	numWorkers       int
 	minPointsPerTile int
+	MaxPointsPerTile int
 	callback         TilerCallback
 	version          version.TilesetVersion
 }
@@ -46,7 +47,8 @@ func NewDefaultTilerOptions() *TilerOptions {
 		gridSize:         20,
 		maxDepth:         10,
 		numWorkers:       runtime.NumCPU(),
-		minPointsPerTile: 5000,
+		minPointsPerTile: 2000,
+		MaxPointsPerTile: 160000, // 0 means no limit
 		eightBitColors:   false,
 		callback:         nil,
 		version:          version.TilesetVersion_1_0,
@@ -98,6 +100,14 @@ func WithWorkerNumber(numWorkers int) tilerOptionsFn {
 func WithMinPointsPerTile(minPointsPerTile int) tilerOptionsFn {
 	return func(opt *TilerOptions) {
 		opt.minPointsPerTile = minPointsPerTile
+	}
+}
+
+// WithMaxPointsPerTile sets the maximum number of points a tile can contain.
+// If a tile contains more points, a subsampling strategy is applied.
+func WithMaxPointsPerTile(maxPointsPerTile int) tilerOptionsFn {
+	return func(opt *TilerOptions) {
+		opt.MaxPointsPerTile = maxPointsPerTile
 	}
 }
 

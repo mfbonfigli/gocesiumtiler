@@ -137,8 +137,15 @@ func getFlags(c *cliOpts) []cli.Flag {
 			Name:        "min-points-per-tile",
 			Aliases:     []string{"m"},
 			Value:       c.minPoints,
-			Usage:       "minimum number of points to enforce in each 3D tile",
+			Usage:       "minimum number of points to enforce in each 3D tile. Might be ignored when the parent has not enough capacity to store the child points (see max-points-per-tile)",
 			Destination: &c.minPoints,
+		},
+		&cli.IntFlag{
+			Name:        "max-points-per-tile",
+			Aliases:     []string{"M"},
+			Value:       c.maxPoints,
+			Usage:       "maximum number of points a tile can contain. If a tile contains more points, a subsampling strategy is applied. 0 means no limit.",
+			Destination: &c.maxPoints,
 		},
 		&cli.BoolFlag{
 			Name:        "8-bit",
@@ -167,6 +174,7 @@ type cliOpts struct {
 	crs          string
 	maxDepth     int
 	minPoints    int
+	maxPoints    int
 	resolution   float64
 	zOffset      float64
 	subsamplePct float64
@@ -179,7 +187,8 @@ func defaultCliOptions() *cliOpts {
 	return &cliOpts{
 		crs:          "",
 		maxDepth:     10,
-		minPoints:    5000,
+		minPoints:    2000,
+		maxPoints:    160000,
 		resolution:   20,
 		subsamplePct: 1,
 		zOffset:      0,
@@ -198,6 +207,9 @@ func (c *cliOpts) validate() {
 	}
 	if c.minPoints < 1 {
 		log.Fatal("min-points-per-tile should be at least 1")
+	}
+	if c.maxPoints < 0 {
+		log.Fatal("max-points-per-tile should be at least 0 (0 means no limit)")
 	}
 	if c.resolution < 0.5 || c.resolution > 1000 {
 		log.Fatal("resolution should be between 1 and 1000 meters")
@@ -219,13 +231,14 @@ func (c *cliOpts) print() {
 - Source CRS: %s,
 - Max Depth: %d,
 - Resolution: %f meters,
-- Min Points per tile: %d
+- Min Points per tile: %d,
+- Max Points per tile: %d
 - Z-Offset: %f meters,
 - 8Bit Color: %v
 - Join Clouds: %v
 - Tileset Version: %v
 
-`, crsMsg, c.maxDepth, c.resolution, c.minPoints, c.zOffset, c.eightBit, c.join, c.version)
+`, crsMsg, c.maxDepth, c.resolution, c.minPoints, c.maxPoints, c.zOffset, c.eightBit, c.join, c.version)
 }
 
 func (c *cliOpts) getTilerOptions() *tiler.TilerOptions {
@@ -246,6 +259,7 @@ func (c *cliOpts) getTilerOptions() *tiler.TilerOptions {
 		tiler.WithGridSize(c.resolution),
 		tiler.WithMaxDepth(c.maxDepth),
 		tiler.WithMinPointsPerTile(c.minPoints),
+		tiler.WithMaxPointsPerTile(c.maxPoints),
 		tiler.WithCallback(eventListener),
 		tiler.WithTilesetVersion(v),
 	)
