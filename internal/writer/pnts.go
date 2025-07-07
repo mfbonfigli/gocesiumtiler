@@ -15,21 +15,19 @@ import (
 )
 
 // PntsEncoder writes a node data as Pnts file (3D Tiles 1.0 specs)
-type PntsEncoder struct{}
+type PntsEncoder struct {
+	filename string
+}
 
 func (e *PntsEncoder) TilesetVersion() version.TilesetVersion {
 	return version.TilesetVersion_1_0
 }
 
-func (e *PntsEncoder) Filename() string {
-	return "content.pnts"
+func NewPntsEncoder(filename string) *PntsEncoder {
+	return &PntsEncoder{filename: filename}
 }
 
-func NewPntsEncoder() *PntsEncoder {
-	return &PntsEncoder{}
-}
-
-func (e *PntsEncoder) Write(node tree.Node, folderPath string) error {
+func (e *PntsEncoder) Write(node tree.Node, folderPath string, prefix string) error {
 	pts := node.Points()
 
 	// Feature table
@@ -39,7 +37,7 @@ func (e *PntsEncoder) Write(node tree.Node, folderPath string) error {
 	batchTableBytes, batchTableLen := e.generateBatchTable(pts.Len())
 
 	// Write binary content to file
-	pntsFilePath := path.Join(folderPath, e.Filename())
+	pntsFilePath := path.Join(folderPath, prefix+e.filename)
 	f, err := os.Create(pntsFilePath)
 	if err != nil {
 		return err

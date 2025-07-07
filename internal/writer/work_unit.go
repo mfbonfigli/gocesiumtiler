@@ -11,4 +11,6 @@ type WorkUnit struct {
 	Node tree.Node
 	// BasePath is the path of the folder where to write the content.pnts and tileset.json files for this workunit
 	BasePath string
+	// Prefix is the content file prefix
+	Prefix string
 }

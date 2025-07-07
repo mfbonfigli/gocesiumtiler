@@ -166,13 +166,6 @@ func getFlags(c *cliOpts) []cli.Flag {
 			Usage:       "sets the version of the tileset to generate. Could be either 1.0 or 1.1",
 			Destination: &c.version,
 		},
-		&cli.BoolFlag{
-			Name:        "squash",
-			Aliases:     []string{"s"},
-			Value:       c.squash,
-			Usage:       "generate a single tileset.json file instead of multiple files to reduce network overhead",
-			Destination: &c.squash,
-		},
 	}
 }
 
@@ -188,7 +181,6 @@ type cliOpts struct {
 	eightBit     bool
 	join         bool
 	version      string
-	squash       bool
 }
 
 func defaultCliOptions() *cliOpts {
@@ -270,7 +262,6 @@ func (c *cliOpts) getTilerOptions() *tiler.TilerOptions {
 		tiler.WithMaxPointsPerTile(c.maxPoints),
 		tiler.WithCallback(eventListener),
 		tiler.WithTilesetVersion(v),
-		tiler.WithSquashTileset(c.squash),
 	)
 }
 

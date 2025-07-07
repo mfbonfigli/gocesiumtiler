@@ -60,21 +60,19 @@ var extJson = `
 
 // GltfEncoder writes a node data as Gltf/Glb binary file (3D Tiles 1.1 specs)
 // Encodes intensity and classification using the EXT_structural_metadata GLTF extension
-type GltfEncoder struct{}
+type GltfEncoder struct {
+	filename string
+}
 
 func (e *GltfEncoder) TilesetVersion() version.TilesetVersion {
 	return version.TilesetVersion_1_1
 }
 
-func (e *GltfEncoder) Filename() string {
-	return "content.glb"
+func NewGltfEncoder(filename string) *GltfEncoder {
+	return &GltfEncoder{filename: filename}
 }
 
-func NewGltfEncoder() *GltfEncoder {
-	return &GltfEncoder{}
-}
-
-func (e *GltfEncoder) Write(node tree.Node, folderPath string) error {
+func (e *GltfEncoder) Write(node tree.Node, folderPath string, prefix string) error {
 	pts := node.Points()
 
 	doc := gltf.NewDocument()
@@ -149,6 +147,6 @@ func (e *GltfEncoder) Write(node tree.Node, folderPath string) error {
 		"EXT_structural_metadata",
 	}
 
-	pntsFilePath := path.Join(folderPath, e.Filename())
+	pntsFilePath := path.Join(folderPath, prefix+e.filename)
 	return gltf.SaveBinary(doc, pntsFilePath)
 }

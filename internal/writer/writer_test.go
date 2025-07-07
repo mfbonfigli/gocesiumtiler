@@ -54,7 +54,9 @@ func TestWriter(t *testing.T) {
 	w.consumerFunc = func(v version.TilesetVersion) Consumer {
 		return c
 	}
-	err = w.Write(root, "base", context.TODO())
+	ctx := context.TODO()
+	ctx = context.WithValue(ctx, "IS_TEST", true)
+	err = w.Write(root, "base", ctx)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -113,7 +115,6 @@ func TestWriterSquashTilesetContent(t *testing.T) {
 	w, err := NewWriter(tmpDir,
 		WithNumWorkers(1),
 		WithBufferRatio(10),
-		WithSquash(true),
 		WithTilesetVersion(version.TilesetVersion_1_0),
 	)
 	if err != nil {
@@ -134,8 +135,8 @@ func TestWriterSquashTilesetContent(t *testing.T) {
 
 	if tileset.Content == nil {
 		t.Errorf("expected root tile to have content")
-	} else if tileset.Content.Url != "content.pnts" {
-		t.Errorf("expected content URL to be 'content.pnts', got %v", tileset.Content.Url)
+	} else if tileset.Content.Url != "data/d.pnts" {
+		t.Errorf("expected content URL to be 'data/d.pnts', got %v", tileset.Content.Url)
 	}
 
 	// Verify bounding box
@@ -158,8 +159,8 @@ func TestWriterSquashTilesetContent(t *testing.T) {
 
 		if childTile.Content == nil {
 			t.Errorf("expected child tile to have content")
-		} else if childTile.Content.Url != "1/content.pnts" {
-			t.Errorf("expected child content URL to be '1/content.pnts', got %v", childTile.Content.Url)
+		} else if childTile.Content.Url != "data/1d.pnts" {
+			t.Errorf("expected child content URL to be 'data/1d.pnts', got %v", childTile.Content.Url)
 		}
 	}
 }
@@ -326,91 +327,5 @@ func TestWriterTilesetVersion(t *testing.T) {
 	c = w.consumerFunc(version.TilesetVersion_1_1)
 	if _, success := (c.(*StandardConsumer).encoder).(*GltfEncoder); success != true {
 		t.Errorf("unexpected geometry encoder for tileset version 1.1")
-	}
-}
-
-func TestWriterSquashMode(t *testing.T) {
-	// Create test data structure
-	pt1 := &geom.LinkedPoint{
-		Pt: geom.NewPoint(1, 2, 3, 4, 5, 6, 7, 8),
-	}
-	pt2 := &geom.LinkedPoint{
-		Pt: geom.NewPoint(9, 10, 11, 12, 13, 14, 15, 16),
-	}
-	pt3 := &geom.LinkedPoint{
-		Pt: geom.NewPoint(17, 18, 19, 20, 21, 22, 23, 24),
-	}
-	pt1.Next = pt2
-	pt2.Next = pt3
-
-	stream := geom.NewLinkedPointStream(pt1, 3)
-	stream2 := geom.NewLinkedPointStream(pt2, 2)
-
-	// Create a mock tree with child nodes
-	child := &tree.MockNode{
-		TotalNumPts: 2,
-		Pts:         stream2,
-		Bounds:      geom.NewBoundingBox(5, 6, 7, 8, 9, 10),
-		GeomError:   10.0,
-	}
-	_ = &tree.MockNode{
-		TotalNumPts: 5,
-		Pts:         stream,
-		Bounds:      geom.NewBoundingBox(1, 2, 3, 4, 5, 6),
-		GeomError:   20.0,
-		ChildNodes: [8]tree.Node{
-			nil,
-			child,
-		},
-	}
-
-	// Test squash mode enabled
-	w, err := NewWriter("base",
-		WithNumWorkers(1),
-		WithBufferRatio(10),
-		WithSquash(true),
-	)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-
-	// Verify squash flag is set
-	if w.squash != true {
-		t.Errorf("expected squash to be true, got %v", w.squash)
-	}
-
-	// Verify consumer has skipTileset set to true
-	c := w.consumerFunc(version.TilesetVersion_1_0)
-	if stdConsumer, ok := c.(*StandardConsumer); ok {
-		if stdConsumer.skipTileset != true {
-			t.Errorf("expected consumer skipTileset to be true when squash is enabled")
-		}
-	} else {
-		t.Errorf("expected StandardConsumer type")
-	}
-
-	// Test squash mode disabled (default)
-	w2, err := NewWriter("base",
-		WithNumWorkers(1),
-		WithBufferRatio(10),
-		WithSquash(false),
-	)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-
-	// Verify squash flag is not set
-	if w2.squash != false {
-		t.Errorf("expected squash to be false, got %v", w2.squash)
-	}
-
-	// Verify consumer has skipTileset set to false
-	c2 := w2.consumerFunc(version.TilesetVersion_1_0)
-	if stdConsumer, ok := c2.(*StandardConsumer); ok {
-		if stdConsumer.skipTileset != false {
-			t.Errorf("expected consumer skipTileset to be false when squash is disabled")
-		}
-	} else {
-		t.Errorf("expected StandardConsumer type")
 	}
 }

@@ -11,9 +11,14 @@ import (
 	"sync"
 
 	"github.com/mfbonfigli/gocesiumtiler/v2/internal/tree"
+	"github.com/mfbonfigli/gocesiumtiler/v2/internal/utils"
 	"github.com/mfbonfigli/gocesiumtiler/v2/tiler/model"
 	"github.com/mfbonfigli/gocesiumtiler/v2/version"
 )
+
+const pntsFilename string = "d.pnts"
+const glbFilename string = "d.glb"
+const dataFolder string = "data"
 
 // Writer writes a tree as a 3D Cesium Point cloud to the given output folder
 type Writer interface {
@@ -25,7 +30,6 @@ type StandardWriter struct {
 	bufferRatio  int
 	basePath     string
 	version      version.TilesetVersion
-	squash       bool
 	producerFunc func(basepath, folder string) Producer
 	consumerFunc func(version.TilesetVersion) Consumer
 }
@@ -45,9 +49,9 @@ func NewWriter(basePath string, options ...func(*StandardWriter)) (*StandardWrit
 	// Set consumerFunc after options are applied so we can use the squash flag
 	w.consumerFunc = func(v version.TilesetVersion) Consumer {
 		if v == version.TilesetVersion_1_0 {
-			return NewStandardConsumer(WithGeometryEncoder(NewPntsEncoder()), WithSkipTileset(w.squash))
+			return NewStandardConsumer(WithGeometryEncoder(NewPntsEncoder(pntsFilename)))
 		}
-		return NewStandardConsumer(WithGeometryEncoder(NewGltfEncoder()), WithSkipTileset(w.squash))
+		return NewStandardConsumer(WithGeometryEncoder(NewGltfEncoder(glbFilename)))
 	}
 
 	return w, nil
@@ -75,13 +79,6 @@ func WithTilesetVersion(v version.TilesetVersion) func(*StandardWriter) {
 	}
 }
 
-// WithSquash sets whether to generate a single tileset.json file instead of multiple files
-func WithSquash(squash bool) func(*StandardWriter) {
-	return func(w *StandardWriter) {
-		w.squash = squash
-	}
-}
-
 func (w *StandardWriter) Write(t tree.Tree, folderName string, ctx context.Context) error {
 	// init channel where consumers can eventually submit errors that prevented them to finish the job
 	errorChannel := make(chan error)
@@ -91,6 +88,11 @@ func (w *StandardWriter) Write(t tree.Tree, folderName string, ctx context.Conte
 
 	var waitGroup sync.WaitGroup
 	var errorWaitGroup sync.WaitGroup
+
+	// create folders
+	if err := utils.CreateDirectoryIfDoesNotExist(path.Join(w.basePath, folderName, dataFolder)); err != nil {
+		return err
+	}
 
 	// producing is easy, only 1 producer
 	producer := w.producerFunc(w.basePath, folderName)
@@ -130,12 +132,12 @@ func (w *StandardWriter) Write(t tree.Tree, folderName string, ctx context.Conte
 		return errs[0]
 	}
 
-	// If squash mode is enabled, generate the single tileset.json file
-	if w.squash {
-		return w.writeSquashedTileset(t, folderName)
+	if val := ctx.Value("IS_TEST"); val != nil && val.(bool) {
+		// if we are executing tests, do not write the tileset
+		// TODO: allow to mock or inject the writer
+		return nil
 	}
-
-	return nil
+	return w.writeSquashedTileset(t, folderName)
 }
 
 // writeSquashedTileset generates a single tileset.json file with all nodes
@@ -177,22 +179,21 @@ func (w *StandardWriter) buildTileTree(node tree.Node, parentPath string) Root {
 
 	// Add content if node has points
 	if node.TotalNumberOfPoints() > 0 {
-		filename := "content.pnts"
+		filename := pntsFilename
 		if w.version == version.TilesetVersion_1_1 {
-			filename = "content.glb"
+			filename = glbFilename
 		}
 		if parentPath != "" {
-			root.Content = &Content{Url: path.Join(parentPath, filename)}
+			root.Content = &Content{Url: path.Join(parentPath, dataFolder, filename)}
 		} else {
-			root.Content = &Content{Url: filename}
+			root.Content = &Content{Url: path.Join(dataFolder, filename)}
 		}
 	}
 
 	// Add children recursively
 	for i, child := range node.Children() {
 		if child != nil && child.TotalNumberOfPoints() > 0 {
-			childPath := path.Join(parentPath, strconv.Itoa(i))
-			childTile := w.buildChildTile(child, childPath)
+			childTile := w.buildChildTile(child, parentPath, strconv.Itoa(i))
 			root.Children = append(root.Children, childTile)
 		}
 	}
@@ -201,7 +202,7 @@ func (w *StandardWriter) buildTileTree(node tree.Node, parentPath string) Root {
 }
 
 // buildChildTile builds a child tile for squashed mode
-func (w *StandardWriter) buildChildTile(node tree.Node, nodePath string) *Child {
+func (w *StandardWriter) buildChildTile(node tree.Node, nodePath string, prefix string) *Child {
 	reg := node.BoundingBox()
 
 	child := &Child{
@@ -212,18 +213,17 @@ func (w *StandardWriter) buildChildTile(node tree.Node, nodePath string) *Child 
 
 	// Add content if node has points
 	if node.TotalNumberOfPoints() > 0 {
-		filename := "content.pnts"
+		filename := pntsFilename
 		if w.version == version.TilesetVersion_1_1 {
-			filename = "content.glb"
+			filename = glbFilename
 		}
-		child.Content = &Content{Url: path.Join(nodePath, filename)}
+		child.Content = &Content{Url: path.Join(dataFolder, prefix+filename)}
 	}
 
 	// Add children recursively
 	for i, childNode := range node.Children() {
 		if childNode != nil && childNode.TotalNumberOfPoints() > 0 {
-			childPath := path.Join(nodePath, strconv.Itoa(i))
-			grandChild := w.buildChildTile(childNode, childPath)
+			grandChild := w.buildChildTile(childNode, nodePath, prefix+strconv.Itoa(i))
 			child.Children = append(child.Children, grandChild)
 		}
 	}

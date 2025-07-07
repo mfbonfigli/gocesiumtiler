@@ -35,7 +35,6 @@ type TilerOptions struct {
 	MaxPointsPerTile int
 	callback         TilerCallback
 	version          version.TilesetVersion
-	squashTileset    bool
 }
 
 type tilerOptionsFn func(*TilerOptions)
@@ -130,12 +129,5 @@ func WithEightBitColors(eightBit bool) tilerOptionsFn {
 func WithTilesetVersion(v version.TilesetVersion) tilerOptionsFn {
 	return func(opt *TilerOptions) {
 		opt.version = v
-	}
-}
-
-// WithSquashTileset sets whether to generate a single tileset.json file instead of multiple files
-func WithSquashTileset(squash bool) tilerOptionsFn {
-	return func(opt *TilerOptions) {
-		opt.squashTileset = squash
 	}
 }

@@ -54,7 +54,6 @@ func NewGoCesiumTiler() (*GoCesiumTiler, error) {
 			return writer.NewWriter(folder,
 				writer.WithNumWorkers(opts.numWorkers),
 				writer.WithTilesetVersion(opts.version),
-				writer.WithSquash(opts.squashTileset),
 			)
 		},
 		lasReaderProvider: func(inputLasFiles []string, sourceCRS string, eightbit bool) (las.LasReader, error) {

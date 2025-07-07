@@ -12,7 +12,6 @@ import (
 )
 
 func TestProduce(t *testing.T) {
-
 	pt1 := &geom.LinkedPoint{
 		Pt: geom.NewPoint(1, 2, 3, 4, 5, 6, 7, 8),
 	}
@@ -55,14 +54,14 @@ func TestProduce(t *testing.T) {
 		}
 		if wu.Node == root {
 			rootSeen = true
-			if wu.BasePath != "path/folder" {
-				t.Errorf("unexpected path, expected path/folder, got %s", wu.BasePath)
+			if wu.BasePath != "path/folder/data" {
+				t.Errorf("unexpected path, expected path/folder/data, got %s", wu.BasePath)
 			}
 		}
 		if wu.Node == child {
 			childSeen = true
-			if wu.BasePath != "path/folder/1" {
-				t.Errorf("unexpected path, expected path/folder/1, got %s", wu.BasePath)
+			if wu.BasePath != "path/folder/data" {
+				t.Errorf("unexpected path, expected path/folder/data, got %s", wu.BasePath)
 			}
 		}
 	}

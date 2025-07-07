@@ -33,12 +33,12 @@ func (p *StandardProducer) Produce(work chan *WorkUnit, errchan chan error, wg *
 		}
 	}()
 	defer close(work)
-	p.produce(errchan, p.basePath, node, work, wg, ctx)
+	p.produce(errchan, path.Join(p.basePath, "data"), "", node, work, wg, ctx)
 	wg.Done()
 }
 
 // Parses a tree node and submits WorkUnits the the provided workchannel.
-func (p *StandardProducer) produce(errchan chan error, basePath string, node tree.Node, work chan *WorkUnit, wg *sync.WaitGroup, ctx context.Context) {
+func (p *StandardProducer) produce(errchan chan error, basePath string, prefix string, node tree.Node, work chan *WorkUnit, wg *sync.WaitGroup, ctx context.Context) {
 	// if node contains points (it should always be the case), then submit work
 	if err := ctx.Err(); err != nil {
 		errchan <- fmt.Errorf("context closed: %v", err)
@@ -48,6 +48,7 @@ func (p *StandardProducer) produce(errchan chan error, basePath string, node tre
 		work <- &WorkUnit{
 			Node:     node,
 			BasePath: basePath,
+			Prefix:   prefix,
 		}
 	} else {
 		errchan <- fmt.Errorf("unexpected error: found tile without points: %v", node)
@@ -56,7 +57,7 @@ func (p *StandardProducer) produce(errchan chan error, basePath string, node tre
 	// iterate all non nil children and recursively submit all work units
 	for i, child := range node.Children() {
 		if child != nil {
-			p.produce(errchan, path.Join(basePath, strconv.Itoa(i)), child, work, wg, ctx)
+			p.produce(errchan, basePath, prefix+strconv.Itoa(i), child, work, wg, ctx)
 		}
 	}
 }
