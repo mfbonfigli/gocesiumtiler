@@ -22,6 +22,8 @@ type Tree interface {
 	// requires providing a coordinate and an elevation converter that will be used by the tree
 	// to internally perform coordinate conversions, as appropriate. The elevation converter can be nil.
 	Load(las.LasReader, coor.ConverterFactory, mutator.Mutator, context.Context) error
+	// Dispose releases all the resources consumed by the tree
+	Dispose() error
 }
 
 // Node models a generic node of a Tree. A node contains the points to show on its corresponding LoD.
@@ -29,9 +31,9 @@ type Tree interface {
 type Node interface {
 	// BoundingBox returns the bounding box of the node, expressed in local coordinates
 	BoundingBox() geom.BoundingBox
-	// Children returns the 8 children of the current tree node. Some or
+	// ChildrenAt returns the ith children of the current tree node. Some or
 	// all of these could be nil if not present.
-	Children() [8]Node
+	ChildrenAt(i uint8) Node
 	// Points returns  the points stored in the current node, not including those in the children.
 	// Points will have coordinates expressed relative to the local reference system
 	Points() geom.PointList

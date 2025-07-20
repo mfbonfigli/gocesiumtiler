@@ -29,6 +29,7 @@ func (l *loader) load(n *Node, r las.LasReader, ctx context.Context) (err error)
 		return fmt.Errorf("las with no points")
 	}
 	subCtx, cancelFunc := context.WithCancel(ctx)
+	defer cancelFunc()
 
 	// Store all the points in a continuous memory space
 	// While not required, storing points in a contiguous array makes
@@ -41,6 +42,7 @@ func (l *loader) load(n *Node, r las.LasReader, ctx context.Context) (err error)
 	if err != nil {
 		return err
 	}
+	defer c.Cleanup()
 
 	// compute the baseline point and local CRS
 	localToGlobal, base, read, err := l.baseline(r, c)
@@ -68,6 +70,7 @@ func (l *loader) load(n *Node, r las.LasReader, ctx context.Context) (err error)
 			cancelFunc()
 			return err
 		}
+		defer conv.Cleanup()
 		consumers = append(consumers, newConsumer(i, start, workerPtsNum, conv, l.mutator, r.GetCRS(), &backingArray))
 		wg.Add(1)
 		go consumers[i].consume(r, localToGlobal, errchan, &wg, subCtx)
@@ -85,7 +88,9 @@ func (l *loader) load(n *Node, r las.LasReader, ctx context.Context) (err error)
 			if !ok {
 				return
 			}
+			// in case of errors, cancel the context to abort early
 			errs = append(errs, err)
+			cancelFunc()
 		}
 	}()
 	wg.Wait()
@@ -116,7 +121,7 @@ func (l *loader) load(n *Node, r las.LasReader, ctx context.Context) (err error)
 	// set data into the gridnode
 	n.bounds = bbox
 	n.pts = &base
-	n.localToGlobal = &localToGlobal
+	n.config.localToGlobal = &localToGlobal
 	return nil
 }
 

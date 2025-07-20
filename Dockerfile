@@ -65,7 +65,7 @@ RUN cmake -DCMAKE_TOOLCHAIN_FILE=/vcpkg/scripts/buildsystems/vcpkg.cmake \
           -DBUILD_SHARED_LIBS=OFF \
           -DENABLE_CURL=OFF \
           -DENABLE_TIFF=ON \
-          -DBUILD_TESTING=OFF .. \
+          -DBUILD_TESTING=OFF \
           -DEMBED_PROJ_DATA_PATH=OFF \ 
           .. 
 RUN cmake --build . --config Release -j $(nproc)
@@ -130,7 +130,7 @@ RUN cmake -DCMAKE_TOOLCHAIN_FILE=/vcpkg/scripts/buildsystems/vcpkg.cmake \
           -DBUILD_SHARED_LIBS=OFF \
           -DENABLE_CURL=OFF \
           -DENABLE_TIFF=ON \
-          -DBUILD_TESTING=OFF .. \
+          -DBUILD_TESTING=OFF \
           -DEMBED_PROJ_DATA_PATH=OFF \ 
           .. 
 RUN cmake --build . --config Release -j $(nproc)

@@ -83,12 +83,21 @@ func (w *StandardWriter) Write(t tree.Tree, folderName string, ctx context.Conte
 	// init channel where consumers can eventually submit errors that prevented them to finish the job
 	errorChannel := make(chan error)
 
+	// launch error listener
+	var errorWaitGroup sync.WaitGroup
+	errs := []error{}
+	errorWaitGroup.Add(1)
+	go func() {
+		defer errorWaitGroup.Done()
+		for err := range errorChannel {
+			errs = append(errs, err)
+		}
+	}()
+
 	// init channel where to submit work with a buffer N times greater than the number of consumer
 	workChannel := make(chan *WorkUnit, w.numWorkers*w.bufferRatio)
 
 	var waitGroup sync.WaitGroup
-	var errorWaitGroup sync.WaitGroup
-
 	// create folders
 	if err := utils.CreateDirectoryIfDoesNotExist(path.Join(w.basePath, folderName, dataFolder)); err != nil {
 		return err
@@ -106,20 +115,6 @@ func (w *StandardWriter) Write(t tree.Tree, folderName string, ctx context.Conte
 		consumer := w.consumerFunc(w.version)
 		go consumer.Consume(workChannel, errorChannel, &waitGroup)
 	}
-
-	// launch error listener
-	errs := []error{}
-	errorWaitGroup.Add(1)
-	go func() {
-		defer errorWaitGroup.Done()
-		for {
-			err, ok := <-errorChannel
-			if !ok {
-				return
-			}
-			errs = append(errs, err)
-		}
-	}()
 
 	// wait for producers and consumers to finish
 	waitGroup.Wait()
@@ -191,7 +186,8 @@ func (w *StandardWriter) buildTileTree(node tree.Node, parentPath string) Root {
 	}
 
 	// Add children recursively
-	for i, child := range node.Children() {
+	for i := range 8 {
+		child := node.ChildrenAt(uint8(i))
 		if child != nil && child.TotalNumberOfPoints() > 0 {
 			childTile := w.buildChildTile(child, parentPath, strconv.Itoa(i))
 			root.Children = append(root.Children, childTile)
@@ -221,7 +217,8 @@ func (w *StandardWriter) buildChildTile(node tree.Node, nodePath string, prefix 
 	}
 
 	// Add children recursively
-	for i, childNode := range node.Children() {
+	for i := range 8 {
+		childNode := node.ChildrenAt(uint8(i))
 		if childNode != nil && childNode.TotalNumberOfPoints() > 0 {
 			grandChild := w.buildChildTile(childNode, nodePath, prefix+strconv.Itoa(i))
 			child.Children = append(child.Children, grandChild)

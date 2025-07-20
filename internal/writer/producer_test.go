@@ -41,7 +41,7 @@ func TestProduce(t *testing.T) {
 		},
 	}
 	c := make(chan *WorkUnit, 10)
-	ec := make(chan error)
+	ec := make(chan error, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	p.Produce(c, ec, wg, root, context.TODO())

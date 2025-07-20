@@ -35,7 +35,6 @@ type Point struct {
 	UserData                    uint8
 	ScanAngle                   int16
 	PointSourceID               uint16
-	CustomData                  []byte
 	GPSTime                     float64
 	Red                         uint16
 	Green                       uint16

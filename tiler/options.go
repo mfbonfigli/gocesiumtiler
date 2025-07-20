@@ -45,10 +45,10 @@ type TilerCallback func(event TilerEvent, inputDesc string, elapsed int64, msg s
 func NewDefaultTilerOptions() *TilerOptions {
 	return &TilerOptions{
 		gridSize:         20,
-		maxDepth:         10,
+		maxDepth:         8,
 		numWorkers:       runtime.NumCPU(),
-		minPointsPerTile: 2000,
-		MaxPointsPerTile: 160000, // 0 means no limit
+		minPointsPerTile: 5000,
+		MaxPointsPerTile: 180000, // 0 means no limit
 		eightBitColors:   false,
 		callback:         nil,
 		version:          version.TilesetVersion_1_0,

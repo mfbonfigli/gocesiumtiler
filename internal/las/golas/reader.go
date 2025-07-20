@@ -381,7 +381,7 @@ func (g *Las) Next() (Point, error) {
 	}
 
 	// Read point custom data, all the residual bytes
-	p.CustomData, err = io.ReadAll(r)
+	_, err = io.Copy(io.Discard, r)
 	if err != nil {
 		return p, err
 	}

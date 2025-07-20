@@ -85,6 +85,7 @@ func (t *GoCesiumTiler) ProcessFolder(inputFolder, outputFolder string, sourceCR
 func (t *GoCesiumTiler) ProcessFiles(inputLasFiles []string, outputFolder string, sourceCRS string, opts *TilerOptions, ctx context.Context) error {
 	start := time.Now()
 	tr := t.treeProvider(opts)
+	defer tr.Dispose()
 
 	inputDesc := fmt.Sprintf("%d files", len(inputLasFiles))
 	if len(inputLasFiles) == 1 {

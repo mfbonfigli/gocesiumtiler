@@ -25,8 +25,8 @@ func TestNewGridTree(t *testing.T) {
 	if tree.IsRoot() != true {
 		t.Errorf("the tree object should be a root node")
 	}
-	if tree.maxDepth != 12 {
-		t.Errorf("expected maxDepth %d but got %d", 12, tree.maxDepth)
+	if tree.config.maxDepth != 12 {
+		t.Errorf("expected maxDepth %d but got %d", 12, tree.config.maxDepth)
 	}
 	if tree.depth != 0 {
 		t.Errorf("expected depth %d but got %d", 0, tree.depth)
@@ -34,8 +34,8 @@ func TestNewGridTree(t *testing.T) {
 	if tree.gridSize != 11.5 {
 		t.Errorf("expected gridSize %f but got %f", 11.5, tree.gridSize)
 	}
-	if tree.loadWorkersNumber != 2 {
-		t.Errorf("expected loadWorkersNumber %d but got %d", 2, tree.loadWorkersNumber)
+	if tree.config.loadWorkersNumber != 2 {
+		t.Errorf("expected loadWorkersNumber %d but got %d", 2, tree.config.loadWorkersNumber)
 	}
 }
 
@@ -47,8 +47,8 @@ func TestNewGridTreeDefaults(t *testing.T) {
 	if tree.IsRoot() != true {
 		t.Errorf("the tree object should be a root node")
 	}
-	if tree.maxDepth != 10 {
-		t.Errorf("expected maxDepth %d but got %d", 12, tree.maxDepth)
+	if tree.config.maxDepth != 10 {
+		t.Errorf("expected maxDepth %d but got %d", 10, tree.config.maxDepth)
 	}
 	if tree.depth != 0 {
 		t.Errorf("expected depth %d but got %d", 0, tree.depth)
@@ -56,11 +56,11 @@ func TestNewGridTreeDefaults(t *testing.T) {
 	if tree.gridSize != 1.0 {
 		t.Errorf("expected gridSize %f but got %f", 1.0, tree.gridSize)
 	}
-	if tree.loadWorkersNumber != 1 {
-		t.Errorf("expected loadWorkersNumber %d but got %d", 1, tree.loadWorkersNumber)
+	if tree.config.loadWorkersNumber != 1 {
+		t.Errorf("expected loadWorkersNumber %d but got %d", 1, tree.config.loadWorkersNumber)
 	}
-	if tree.minPointsPerChildren != 2000 {
-		t.Errorf("expected minPointsPerChildren %d but got %d", 2000, tree.minPointsPerChildren)
+	if tree.config.minPointsPerChildren != 2000 {
+		t.Errorf("expected minPointsPerChildren %d but got %d", 2000, tree.config.minPointsPerChildren)
 	}
 }
 
@@ -125,9 +125,6 @@ func TestGridTreeLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error during tree build: %v", err)
 	}
-
-	t.Logf("Tree built. Root has %d points", tree.NumberOfPoints())
-
 	root := tree.RootNode()
 	if actual := root.TotalNumberOfPoints(); actual != 10 {
 		t.Errorf("expected 10 points, got %d", actual)
@@ -136,7 +133,7 @@ func TestGridTreeLoad(t *testing.T) {
 
 func TestGridTreeGeometricError(t *testing.T) {
 	tree := NewTree(WithGridSize(1))
-	expected := math.Sqrt(3) * 2
+	expected := math.Sqrt(3) * 1.7
 	if actual := tree.GeometricError(); actual != expected {
 		t.Errorf("expected error %v, got %v", expected, actual)
 	}
@@ -229,7 +226,8 @@ func TestGridTreeBuild(t *testing.T) {
 		expected[5],
 		expected[9],
 	}
-	for i, c := range root.Children() {
+	for i := range uint8(8) {
+		c := root.ChildrenAt(i)
 		if c == nil {
 			t.Logf("Child %d is nil", i)
 			continue
@@ -263,14 +261,13 @@ func TestGridTreeBuild(t *testing.T) {
 		if pt != childExpectedMap[i] {
 			t.Errorf("unexpected point returned for children %d, expected %v, got %v", i, childExpectedMap[i], pt)
 		}
-		children := c.Children()
 		if i == 7 {
 			for i := 0; i < 8; i++ {
 				if i == 7 {
-					if n := children[i].NumberOfPoints(); n != 1 {
+					if n := c.ChildrenAt(uint8(i)).NumberOfPoints(); n != 1 {
 						t.Errorf("expected 1 point but got %d", n)
 					}
-					pt, err := children[i].Points().Next()
+					pt, err := c.ChildrenAt(uint8(i)).Points().Next()
 					if err != nil {
 						t.Fatalf("unexpected error %v", err)
 					}
@@ -278,15 +275,15 @@ func TestGridTreeBuild(t *testing.T) {
 						t.Errorf("unexpected point returned for children %d, expected %v, got %v", i, expected[2], pt)
 					}
 				} else {
-					if children[i] != nil {
-						t.Errorf("expected no child, got one: %v", children[i])
+					if c.ChildrenAt(uint8(i)) != nil {
+						t.Errorf("expected no child, got one: %v", c.ChildrenAt(uint8(i)))
 					}
 				}
 			}
 		} else {
-			for i := 0; i < 8; i++ {
-				if children[i] != nil {
-					t.Errorf("expected no child, got one: %v", children[i])
+			for i := range 8 {
+				if val := c.ChildrenAt(uint8(i)); val != nil {
+					t.Errorf("expected no child, got one: %v", val)
 				}
 			}
 		}

@@ -3,7 +3,7 @@ package grid
 import (
 	"context"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 
 	"github.com/mfbonfigli/gocesiumtiler/v2/internal/conv/coor"
@@ -13,6 +13,29 @@ import (
 	"github.com/mfbonfigli/gocesiumtiler/v2/tiler/model"
 	"github.com/mfbonfigli/gocesiumtiler/v2/tiler/mutator"
 )
+
+// Config holds shared configuration for all nodes in the tree
+type Config struct {
+	// loadWorkersNumber is the number of parallel workers to use to load
+	// points in the node
+	loadWorkersNumber int
+
+	// minPointsPerChildren is the minimum numbr of points a children can contain,
+	// if less its points will be rolled up to the parent
+	minPointsPerChildren int
+
+	// maxPointsPerTile is the maximum number of points a tile can contain.
+	// If a tile contains more points, a subsampling strategy is applied.
+	maxPointsPerTile int
+
+	// localToGlobal is a pointer to the Transform matrix that convers this node coordinates
+	// into the parent coordinates. If nil the identity trasform is implied. For the Root node
+	// of a tree this localToGlobal convers the local coordinates into the EPSG 4978 CRS.
+	localToGlobal *model.Transform
+
+	// maxDepth is the maximum depth the tree can reach
+	maxDepth int
+}
 
 // Node implements both the Tree and Node interfaces. The points of the point cloud
 // are stored according to a local CRS, which can be transformed back to the EPSG 4978 CRS via a transform
@@ -36,26 +59,17 @@ type Node struct {
 	childrenPts [8]*geom.LinkedPoint
 
 	// children contains pointers to the child nodes of the tree
-	children [8]tree.Node
-
-	// childrenBuilt is true if the children have been properly built
-	childrenBuilt bool
+	children [8]*Node
 
 	// bounds stores the bounding box for the current node, in local coordinates
 	bounds geom.BoundingBox
 
+	// actualBoundsBuilder stores the actual bounding box from the coordinate stream
+	actualBoundsBuilder *boundingBoxBuilder
+
 	// gridSize stores the sampling interval of points used to sample
 	// the cloud at this node tree depth
 	gridSize float64
-
-	// built is true if the Build method was called on the Node
-	built bool
-
-	// maxDepth is the maximum depth the tree can reach
-	maxDepth int
-
-	// depth is the actual depth of the node
-	depth int
 
 	// numPoints stores the number of points directly contained in the Node
 	// without including points in the children
@@ -65,42 +79,41 @@ type Node struct {
 	// or its children
 	totalNumPoints int
 
-	// loadWorkersNumber is the number of parallel workers to use to load
-	// points in the node
-	loadWorkersNumber int
-
-	// minPointsPerChildren is the minimum numbr of points a children can contain,
-	// if less its points will be rolled up to the parent
-	minPointsPerChildren int
-
-	// maxPointsPerTile is the maximum number of points a tile can contain.
-	// If a tile contains more points, a subsampling strategy is applied.
-	maxPointsPerTile int
-
-	// localToGlobal is a pointer to the Transform matrix that convers this node coordinates
-	// into the parent coordinates. If nil the identity trasform is implied. For the Root node
-	// of a tree this localToGlobal convers the local coordinates into the EPSG 4978 CRS.
-	localToGlobal *model.Transform
-
 	// splitX, splitY, splitZ store the calculated split points for partitioning children
 	// based on the mean of the point coordinates
 	splitX, splitY, splitZ float64
+
+	// config holds shared configuration for all nodes in the tree
+	config *Config
+
+	// built is true if the Build method was called on the Node
+	built bool
+
+	// depth is the actual depth of the node
+	depth int8
+
+	// childrenBuilt is true if the children have been properly built
+	childrenBuilt bool
 
 	sync.Mutex
 }
 
 // NewTree returns a new tree with default settings
 func NewTree(opts ...func(*Node)) *Node {
-	t := &Node{
-		built:                false,
-		maxDepth:             10,
-		depth:                0,
-		childrenBuilt:        false,
-		gridSize:             1,
+	config := &Config{
 		loadWorkersNumber:    1,
 		minPointsPerChildren: 2000,
-		maxPointsPerTile:     160000, // 0 means no limit
+		maxPointsPerTile:     200000, // 0 means no limit
 		localToGlobal:        nil,
+		maxDepth:             10,
+	}
+	t := &Node{
+		built:               false,
+		depth:               0,
+		childrenBuilt:       false,
+		gridSize:            1,
+		actualBoundsBuilder: newBoundingBoxBuilder(),
+		config:              config,
 	}
 	for _, optFn := range opts {
 		optFn(t)
@@ -119,14 +132,14 @@ func WithGridSize(size float64) func(t *Node) {
 // WithMaxDepth sets the max number of levels of the tree
 func WithMaxDepth(depth int) func(t *Node) {
 	return func(t *Node) {
-		t.maxDepth = depth
+		t.config.maxDepth = depth
 	}
 }
 
 // WithLoadWorkersNumber sets the number of parallel goroutines to use to read from the las file
 func WithLoadWorkersNumber(num int) func(t *Node) {
 	return func(t *Node) {
-		t.loadWorkersNumber = num
+		t.config.loadWorkersNumber = num
 	}
 }
 
@@ -134,7 +147,7 @@ func WithLoadWorkersNumber(num int) func(t *Node) {
 // if that is not possible the children points will be rolled up to its parent
 func WithMinPointsPerChildren(num int) func(t *Node) {
 	return func(t *Node) {
-		t.minPointsPerChildren = num
+		t.config.minPointsPerChildren = num
 	}
 }
 
@@ -142,8 +155,13 @@ func WithMinPointsPerChildren(num int) func(t *Node) {
 // If a tile contains more points, a subsampling strategy is applied.
 func WithMaxPointsPerTile(num int) func(t *Node) {
 	return func(t *Node) {
-		t.maxPointsPerTile = num
+		t.config.maxPointsPerTile = num
 	}
+}
+
+// Loads points into the tree from the given las converting them into local coordinates and setting the node transform correctly
+func (t *Node) Dispose() error {
+	return nil
 }
 
 // Loads points into the tree from the given las converting them into local coordinates and setting the node transform correctly
@@ -159,13 +177,14 @@ func (t *Node) RootNode() tree.Node {
 }
 
 func (t *Node) Build() error {
-	if t.depth >= t.maxDepth {
+	if int(t.depth) >= t.config.maxDepth {
 		// reached maxDepth, swallow in all points
 		current := t.pts
 		// traverse just to update the internal counters
 		for current != nil {
 			t.totalNumPoints++
 			t.numPoints++
+			t.actualBoundsBuilder.processPoint(current.Pt.X, current.Pt.Y, current.Pt.Z)
 			current = current.Next
 		}
 		// max depth, no further subdivision possible, mark as built and return
@@ -177,7 +196,7 @@ func (t *Node) Build() error {
 	if t.IsRoot() && t.gridSize <= 0 {
 		t.gridSize = math.Sqrt(math.Pow((t.bounds.Xmax-t.bounds.Xmin), 2)+
 			math.Pow((t.bounds.Ymax-t.bounds.Ymin), 2)+
-			math.Pow((t.bounds.Zmax-t.bounds.Zmin), 2)) / 600
+			math.Pow((t.bounds.Zmax-t.bounds.Zmin), 2)) / 800
 	}
 
 	// First pass of grid sampling
@@ -188,7 +207,7 @@ func (t *Node) Build() error {
 	t.splitX, t.splitY, t.splitZ = averages[0], averages[1], averages[2]
 
 	// Iterative re-sampling if needed
-	if t.maxPointsPerTile > 0 && numWinners > t.maxPointsPerTile {
+	if t.config.maxPointsPerTile > 0 && numWinners > t.config.maxPointsPerTile {
 		currentGridSize := t.gridSize
 		// Safeguard: do not exceed 2x the initial grid size (which is the parent's grid size), unless if it's the root node when we can go up to 20x
 		maxGridSize := t.gridSize * 2
@@ -196,9 +215,9 @@ func (t *Node) Build() error {
 			maxGridSize = t.gridSize * 20
 		}
 
-		for numWinners > t.maxPointsPerTile && currentGridSize < maxGridSize {
+		for numWinners > t.config.maxPointsPerTile && currentGridSize < maxGridSize {
 			// Estimate new grid size
-			scalingFactor := math.Pow(float64(numWinners)/float64(t.maxPointsPerTile), 1.0/3.0) * 1.1
+			scalingFactor := math.Pow(float64(numWinners)/float64(t.config.maxPointsPerTile), 1.0/3.0) * 1.1
 			newGridSize := currentGridSize * scalingFactor
 
 			if newGridSize > maxGridSize {
@@ -228,7 +247,7 @@ func (t *Node) Build() error {
 		}
 
 		// Fallback: if still too many points, do random sampling
-		if numWinners > t.maxPointsPerTile {
+		if numWinners > t.config.maxPointsPerTile {
 			// Convert linked list to slice for shuffling
 			winnerSlice := make([]*geom.LinkedPoint, 0, numWinners)
 			cur := winners
@@ -244,15 +263,15 @@ func (t *Node) Build() error {
 
 			// Re-link the winners
 			winners = nil
-			for i := 0; i < t.maxPointsPerTile; i++ {
+			for i := 0; i < t.config.maxPointsPerTile; i++ {
 				winnerSlice[i].Next = winners
 				winners = winnerSlice[i]
 			}
-			numWinners = t.maxPointsPerTile
+			numWinners = t.config.maxPointsPerTile
 
 			// Create a new losers list from the remaining points
 			var newLosers *geom.LinkedPoint
-			for i := t.maxPointsPerTile; i < len(winnerSlice); i++ {
+			for i := t.config.maxPointsPerTile; i < len(winnerSlice); i++ {
 				winnerSlice[i].Next = newLosers
 				newLosers = winnerSlice[i]
 			}
@@ -299,10 +318,10 @@ func (t *Node) Build() error {
 			count++
 			cur = cur.Next
 		}
-		if count < t.minPointsPerChildren {
+		if count < t.config.minPointsPerChildren {
 			// Check if there is enough capacity in the parent tile
-			capacity := t.maxPointsPerTile - t.numPoints
-			if t.maxPointsPerTile == 0 || count <= capacity {
+			capacity := t.config.maxPointsPerTile - t.numPoints
+			if t.config.maxPointsPerTile == 0 || count <= capacity {
 				// Add child points to current node
 				end := c
 				for end.Next != nil {
@@ -325,46 +344,51 @@ func (t *Node) IsRoot() bool {
 }
 
 func (t *Node) BoundingBox() geom.BoundingBox {
-	return t.bounds
+	return t.actualBoundsBuilder.build()
 }
 
 func (t *Node) ToParentCRS() *model.Transform {
-	return t.localToGlobal
+	return t.config.localToGlobal
 }
 
-func (t *Node) Children() [8]tree.Node {
+func (t *Node) ChildrenAt(i uint8) tree.Node {
 	t.Lock()
 	defer t.Unlock()
 	if t.childrenBuilt {
-		return t.children
+		if val := t.children[i]; val != nil {
+			return val
+		}
+		return nil
 	}
-	t.children = [8]tree.Node{}
+
+	t.children = [8]*Node{}
 	if !t.built {
 		// not built? return nothing
-		return t.children
+		return nil
 	}
 	for i, c := range t.childrenPts {
 		if c == nil {
 			continue
 		}
 		v := &Node{
-			pts:                  c,
-			childrenPts:          [8]*geom.LinkedPoint{},
-			bounds:               geom.NewBoundingBoxFromParentWithSplits(t.bounds, i, t.splitX, t.splitY, t.splitZ),
-			depth:                t.depth + 1,
-			maxDepth:             t.maxDepth,
-			gridSize:             t.gridSize / 2,
-			childrenBuilt:        false,
-			minPointsPerChildren: t.minPointsPerChildren,
-			maxPointsPerTile:     t.maxPointsPerTile,
-			localToGlobal:        nil,
+			pts:                 c,
+			childrenPts:         [8]*geom.LinkedPoint{},
+			bounds:              geom.NewBoundingBoxFromParentWithSplits(t.bounds, i, t.splitX, t.splitY, t.splitZ),
+			actualBoundsBuilder: newBoundingBoxBuilder(),
+			depth:               t.depth + 1,
+			gridSize:            t.gridSize / 2,
+			childrenBuilt:       false,
+			config:              t.config,
 		}
 		// Children MUST be built before returned
 		v.Build()
-		t.children[i] = tree.Node(v)
+		t.children[i] = v
 	}
 	t.childrenBuilt = true
-	return t.children
+	if val := t.children[i]; val != nil {
+		return val
+	}
+	return nil
 }
 
 func (t *Node) Points() geom.PointList {
@@ -380,7 +404,8 @@ func (t *Node) NumberOfPoints() int {
 }
 
 func (t *Node) IsLeaf() bool {
-	for _, v := range t.Children() {
+	for i := range uint8(8) {
+		v := t.ChildrenAt(uint8(i))
 		if v != nil {
 			return false
 		}
@@ -389,7 +414,7 @@ func (t *Node) IsLeaf() bool {
 }
 
 func (t *Node) GeometricError() float64 {
-	return math.Sqrt(t.gridSize*t.gridSize*3) * 2
+	return math.Sqrt(t.gridSize*t.gridSize*3) * 1.7
 }
 
 func (t *Node) getChildrenIndex(p model.Point) int {
@@ -415,7 +440,7 @@ func (t *Node) loadPoints(reader las.LasReader, convFactory coor.ConverterFactor
 	l := loader{
 		createCoorConverter: convFactory,
 		mutator:             mut,
-		workers:             t.loadWorkersNumber,
+		workers:             t.config.loadWorkersNumber,
 	}
 	return l.load(t, reader, ctx)
 }
@@ -451,6 +476,8 @@ func (t *Node) sampleGrid(points *geom.LinkedPoint, gridSize float64) (winners, 
 	cur := points
 	for cur != nil {
 		totalPointsProcessed++
+
+		t.actualBoundsBuilder.processPoint(cur.Pt.X, cur.Pt.Y, cur.Pt.Z)
 
 		// Add to sum for average calculation
 		sumX += float64(cur.Pt.X)

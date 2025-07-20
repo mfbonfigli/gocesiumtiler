@@ -23,7 +23,7 @@ var tilerProvider func() (tiler.Tiler, error) = func() (tiler.Tiler, error) {
 	return tiler.NewGoCesiumTiler()
 }
 
-var cmdVersion = "2.0.1"
+var cmdVersion = "2.1.0"
 
 // GitCommit is injected dynamically at build time via `go build -ldflags "-X main.GitCommit=XYZ"`
 var GitCommit string = "(na)"
@@ -39,8 +39,6 @@ const logo = `
         build: ZZZZ
 
  `
-
-var profilerEnabled = false
 
 func main() {
 	printBanner()
@@ -109,7 +107,7 @@ func getFlags(c *cliOpts) []cli.Flag {
 			Name:        "crs",
 			Aliases:     []string{"e", "epsg"},
 			Value:       c.crs,
-			Usage:       "String representing the input CRS. For example, EPSG:4326 or a generic Proj4 string. Bare numbers will be interpreted as EPSG codes. If empty the system will attempt to autodetect the CRS from the LAS metadata. In case of multiple LAS files, the CRS must be consistent else an error will be thrown.",
+			Usage:       "String representing the input CRS. For example, EPSG:4326 or EPSG:28355+5773 or a generic Proj4 string. Bare numbers will be interpreted as EPSG codes. If empty the system will attempt to autodetect the CRS from the LAS metadata. In case of multiple LAS files, the CRS must be consistent else an error will be thrown.",
 			Destination: &c.crs,
 		},
 		&cli.Float64Flag{

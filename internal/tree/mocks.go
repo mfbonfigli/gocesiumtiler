@@ -35,8 +35,14 @@ func (n *MockNode) ToParentCRS() *model.Transform {
 func (n *MockNode) BoundingBox() geom.BoundingBox {
 	return n.Bounds
 }
-func (n *MockNode) Children() [8]Node {
-	return n.ChildNodes
+func (n *MockNode) ChildrenAt(i uint8) Node {
+	if val := n.ChildNodes[i]; val != nil {
+		return val
+	}
+	return nil
+}
+func (n *MockNode) Dispose() error {
+	return nil
 }
 func (n *MockNode) Points() geom.PointList {
 	return n.Pts
