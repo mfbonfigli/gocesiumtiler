@@ -128,6 +128,7 @@ These flags are applicable to both the `file` and the `folder` commands
    --resolution value, -r value           minimum resolution of the 3d tiles, in meters. approximately represets the maximum sampling distance between any two points at the lowest level of detail (default: 20)
    --z-offset value, -z value             z offset to apply to the point, in meters. only use it if the input elevation is referred to the WGS84 ellipsoid or geoid (default: 0)
    --depth value, -d value                maximum depth of the output tree. (default: 10)
+   --version, -v value                    output tileset version (default: 1.0, can be 1.1 for glb content tiles)
    --min-points-per-tile value, -m value  minimum number of points to enforce in each 3D tile (default: 5000)
    --8-bit                                set to interpret the input points color as part of a 8bit color space (default: false)  
    --subsample value                      Approximate percent of points to keep in the final point cloud, between 0.01 (1%) and 1 (100%) (default: 1)
