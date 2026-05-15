@@ -32,7 +32,16 @@ main() {
     echo -e "${Blue} => Starting dockerized build... "
     build_id="$(date +"%Y%m%d%H%M%S-%N")"
     echo -e "${Blue} => Build id: $build_id"#
-    echo -e "${Blue} => Building..."
+    echo -e "${Blue} => Building for arm64..."
+    docker buildx build \
+        --file Dockerfile.arm64 \
+        --platform linux/arm64 \
+        --target final \
+        --build-arg BUILD_ID=$build_id \
+        --output type=local,dest=./build \
+        -t gocesiumtiler:build \
+        .
+    echo -e "${Blue} => Building for x64..."
     docker build -t gocesiumtiler:build --target=final --output ./build --build-arg BUILD_ID=$build_id .
     echo -e "${BoldGreen}=> Build complete, artifacts saved in: $(readlink -f ./build)"
 }

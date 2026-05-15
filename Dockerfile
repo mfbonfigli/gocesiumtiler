@@ -153,7 +153,6 @@ RUN PKG_CONFIG_PATH="/vcpkg/installed/x64-mingw-static/lib/pkgconfig" \
     GOARCH="amd64" \
     go build -o ./bin/gocesiumtiler.exe -ldflags "-X main.GitCommit=$(git rev-list -1 HEAD)" ./cmd/main.go
 
-
 ##################################
 #           Packaging            #
 ##################################

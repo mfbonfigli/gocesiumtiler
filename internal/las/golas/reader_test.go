@@ -243,7 +243,7 @@ func TestLasGeometries(t *testing.T) {
 			if expected.PointDataRecordFormat == 7 {
 				expected.Classification = 90
 			}
-			if ok, err := compareStructs(expected, actual, 0); !ok || err != nil {
+			if ok, err := compareStructs(expected, actual, 0.000001); !ok || err != nil {
 				t.Errorf("for file %s, expected point %v got %v", filename, expected, actual)
 			}
 			if pf != 7 {

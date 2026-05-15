@@ -15,7 +15,16 @@ function Main {
     $build_id = Get-Date -Format "yyyyMMddHHmmss-fffffff"
     Write-Host " => Build id: $build_id" -ForegroundColor Blue
     
-    Write-Host " => Building..." -ForegroundColor Blue
+    Write-Host " => Building for arm64..." -ForegroundColor Blue
+    docker buildx build `
+        --file Dockerfile.arm64 `
+        --platform linux/arm64 `
+        --target final `
+        --build-arg BUILD_ID=$build_id `
+        --output type=local,dest=./build `
+        -t gocesiumtiler:build `
+        .
+    Write-Host " => Building for x64..." -ForegroundColor Blue
     docker build -t gocesiumtiler:build --target=final --output .\build --build-arg BUILD_ID=$build_id .
     # ensure that the command exited cleanly
     CheckLastExitCode
