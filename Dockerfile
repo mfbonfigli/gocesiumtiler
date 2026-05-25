@@ -1,7 +1,7 @@
 ##################################
 #        BASE BUILD IMAGE        #
 ##################################
-FROM ubuntu:24.04 AS builder-base
+FROM public.ecr.aws/lts/ubuntu:24.04 AS builder-base
 
 # Change these two arguments to change the version of go and PROJ
 ARG GO_VERSION="1.23.2"
