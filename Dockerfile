@@ -1,7 +1,7 @@
 ##################################
 #        BASE BUILD IMAGE        #
 ##################################
-FROM ubuntu:latest AS builder-base
+FROM public.ecr.aws/lts/ubuntu:24.04 AS builder-base
 
 # Change these two arguments to change the version of go and PROJ
 ARG GO_VERSION="1.23.2"
@@ -148,7 +148,7 @@ RUN mkdir -p ./bin
 RUN PKG_CONFIG_PATH="/vcpkg/installed/x64-mingw-static/lib/pkgconfig" \
     CC=x86_64-w64-mingw32-gcc \
     CGO_ENABLED=1 \
-    CGO_LDFLAGS='-L/vcpkg/installed/x64-mingw-static/lib -g -O2 -static -lstdc++ -lsqlite3 -ltiff -lzlib -ljpeg -llzma -lm' \
+    CGO_LDFLAGS='-L/vcpkg/installed/x64-mingw-static/lib -g -O2 -static -lstdc++ -lsqlite3 -ltiff -lzs -ljpeg -llzma -lm' \
     GOOS="windows" \
     GOARCH="amd64" \
     go build -o ./bin/gocesiumtiler.exe -ldflags "-X main.GitCommit=$(git rev-list -1 HEAD)" ./cmd/main.go
