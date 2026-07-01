@@ -1,0 +1,13 @@
+.git/
+build/
+bin/
+.gomodcache/
+.gotmp/
+.agents/
+tools/
+pprof_*.prof
+*.prof
+*.exe
+**/__pycache__/
+**/*.pyc
+.DS_Store

@@ -1,185 +1,108 @@
-# Go Cesium Tiler - Development Setup Guide
+# gotiler Development
 
-```
-                                             _   _ _
-  __ _  ___   ___ ___  ___(_)_   _ _ __ ___ | |_(_) | ___ _ __
- / _  |/ _ \ / __/ _ \/ __| | | | | '_   _ \| __| | |/ _ \ '__|
-| (_| | (_) | (_|  __/\__ \ | |_| | | | | | | |_| | |  __/ |
- \__, |\___/ \___\___||___/_|\__,_|_| |_| |_|\__|_|_|\___|_|
-  __| | A Cesium Point Cloud tile generator written in golang
- |___/ 
-```
+This repository contains the public `gotiler` CLI. The tiling engine lives in the public Go module [`github.com/mfbonfigli/gotiler-core`](https://github.com/mfbonfigli/gotiler-core).
 
-## Introduction
-With the release of version 2, in particular from version 2.0.0-gamma, gocesiumtiler uses the Proj v9.5+ library to perform coordinate conversions. As a result, building the executable is more complex due to the need for `cgo` compiling, but also the need of statically building and linking Proj with the go executable.
+## Reproducible Docker Builds
 
-The build environment thus needs to be properly setup to enable the builds.
+Docker is the recommended way to build release artifacts because it builds PROJ and the C/C++ dependencies in a known environment.
 
-## Reproducible builds powered by Docker
-In order to streamline the build steps, reproducible builds are achieved through a Dockerfile. The repository contains three files:
-- `Dockerfile`: Contains all the build steps needed to build and test gocesiumtiler in both Windows and Linux.
-- `build.sh`: Kickstarts the docker build process injecting the right arguments.
-- `build.ps1`: Powershell scripts that works as `build.sh` but meant to be used with powershell under a windows environment.
-
-The Dockerfile is organized as a multi-stage build.
-1. A base image is prepared, containing essential build tools.
-2. A linux build image is created, where the required dependencies to build under linux are pulled and compiled. Proj is rebuilt from the sources with static linking  targeting the Linux OS and then gocesiumtiler is compiled linking it to the static version of the Proj library.
-3. Another linux build image is created, this one pulling the dependencies needed to cross-compile the gocesiumtiler executable under Windows. Proj is rebuilt again, this time targeting the Windows x86-64 architecture.
-4. The build artifacts are copied in a final scratch image where they are ready to be copied out to the host.
-
-## Local Development environment setup
-Two approaches to local development are possible, the first is using docker to run builds in a reproducible environment, the second is building the code locally without docker.
-
-Note that all the options mentioned statically link Proj to the final build executable, this ensures the system builds a single highly portable binary that embeds all required dependencies. 
-
-### Option 1. Install docker and use `build.sh` or `build.ps1` to build the code and run the tests. 
-
-The benefit of using Dockerized builds is enabling reproducible builds. It recommended to always run a "dockerized" build before creating a PR.
-
-To build just run in a powershell console:
-```
-./build.ps1
+```bash
+bash scripts/build.sh linux-amd64
+bash scripts/build.sh linux-arm64
+bash scripts/build.sh windows-amd64
+bash scripts/build.sh all
 ```
 
-### Option 2. Setup the local machine for local development without Docker.
+Windows PowerShell:
 
-This approach is more challenging and the steps are different depending whether you are developing under Windows or Linux. In general the environment needs to be set up mimicking the steps described in the `Dockerfile`. 
-
-The provided Dockerfile has been written to run builds in Linux, and as such it is also documenting how to setup a local Linux dev environment. 
-For this reason, in the following we will focus mostly instead on the steps needed to setup a dev environment under Windows.
-
-### **Setup a Windows development environment**
-The commands that follow are supposed to be executed from a Powershell console.
-
-**1. Install golang**
-
-**2. Install msys2**
-
-Msys2 will be used to install build tools like the Mingw64 compiler, CMake and Pkgconfig.
-Install it following the instructions here https://www.msys2.org/#installation or using Chocolatey.
-
-Make sure the `bin` folder is available on the `Path`. The `Path` should contain 
-the following folder (please adapt them according to where your Msys2 installation is located):
-- `C:\msys64\usr\bin`
-
-**3. Use Msys2 package manager pacman to install the required build tools**
-
+```powershell
+.\scripts\build.ps1 -Target windows-amd64
 ```
+
+No private GitHub token is required.
+
+## Local Windows Development
+
+Local builds require Go, CGO, MinGW, pkg-config, vcpkg dependencies, and a static PROJ build.
+
+Install MSYS2 packages:
+
+```bash
 pacman -S --noconfirm mingw-w64-x86_64-pkgconf
 pacman -S --noconfirm mingw-w64-x86_64-gcc
 pacman -S --noconfirm mingw-w64-x86_64-cmake
 pacman -S --noconfirm mingw-w64-x86_64-sqlite3
 ```
 
-Make sure that mingw64 executable is on the `Path` and if not add it manually, i.e. add :
-```
-C:\msys64\mingw64\bin
-```
-to the path.
+Install vcpkg dependencies:
 
-**4. Install `Vcpkg`, used to manage the dependencies**
-
-[vcpkg](https://vcpkg.io/en/) is a free C/C++ package manager that will greatly simplify the build setup. To install typically just clone the git repository in some folder, eg:
-```
-git clone https://github.com/Microsoft/vcpkg.git "C:\vcpkg"
-```
-
-And then run:
-```
+```powershell
+git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
 cd C:\vcpkg
-bootstrap-vcpkg.bat -disableMetrics
+.\bootstrap-vcpkg.bat -disableMetrics
+.\vcpkg.exe install sqlite3[core,tool] tiff zlib --triplet=x64-mingw-static
 ```
 
-**5. Set the default Triplets for Vcpkg by creating / setting these environment variables**
+Build PROJ statically, following the Dockerfile for the canonical version and flags. The shape is:
 
-- `VCPKG_DEFAULT_TRIPLET`=`x64-mingw-static`
-- `VCPKG_DEFAULT_HOST_TRIPLET` = `x64-mingw-static`
-
-**6. Install the dependencies needed to build the Proj library (sqlite3 and tiff) via `vcpkg.exe`**
-
-```
-vcpkg.exe install sqlite3[core,tool] zlib --triplet=x64-mingw-static
-```
-
-Note, we are building a statically linked version of these libraries.
-
-**7. Clone Proj in some folder, eg `C:\proj`**
-
-```
-git clone https://github.com/OSGeo/PROJ.git  "C:\proj"
-```
-
-If you want a specific version of Proj instead download and uncompress the archive from
-```
-https://download.osgeo.org/proj/$PROJ_VERSION.tar.gz
+```bash
+cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake \
+  -DVCPKG_TARGET_TRIPLET=x64-mingw-static \
+  -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
+  -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
+  -DCMAKE_INSTALL_PREFIX=/usr/local/ \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_APPS=OFF \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DENABLE_CURL=OFF \
+  -DENABLE_TIFF=ON \
+  -DEMBED_PROJ_DATA_PATH=OFF \
+  -DBUILD_TESTING=OFF ..
+cmake --build . --config Release -j 8
+cmake --build . --target install -j 8
 ```
 
-where `$PROJ_VERSION` is the name of the version you want, e.g. `proj-9.5.0`
+Then build:
 
-**8. Build PROJ with static linking**
+```powershell
+$env:PKG_CONFIG_PATH="C:\usr\local\lib\pkgconfig;C:\vcpkg\installed\x64-mingw-static\lib\pkgconfig"
+$env:CC="x86_64-w64-mingw32-gcc"
+$env:CGO_ENABLED="1"
+$env:CGO_LDFLAGS="-L/c/vcpkg/installed/x64-mingw-static/lib -g -O2 -static -lstdc++ -lsqlite3 -ltiff -lz -ljpeg -llzma -lm"
 
-```
-cd C:\proj
-mkdir build
-cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
-    -DVCPKG_TARGET_TRIPLET=x64-mingw-static `
-    -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc `
-    -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ `
-    -DCMAKE_INSTALL_PREFIX=/usr/local/ `
-    -DCMAKE_BUILD_TYPE=Release `
-    -DBUILD_APPS=OFF `
-    -DBUILD_SHARED_LIBS=OFF `
-    -DENABLE_CURL=OFF `
-    -DENABLE_TIFF=ON `
-    -DEMBED_PROJ_DATA_PATH=OFF `
-    -DBUILD_TESTING=OFF .. 
-cmake --build . --config Release -j $(nproc)
-cmake --build . --target install -j $(nproc)
+go build -o ./bin/gotiler.exe ./cmd/main.go
+go test ./...
 ```
 
-Make sure `which cmake` points to the Msys2 - Mingw64 installation folder. If `$(nproc)` doesn't work just replace it with the number of CPUs on your system.
+## Local Linux Development
 
----
+For Ubuntu-like environments, follow the Dockerfile steps:
 
-**Note: Steps 1-8 are only required to be executed once, or when you want to upgrade the Proj version or one of its dependencies.**
+1. Install build tools, CMake, pkg-config, SQLite, TIFF, and GCC.
+2. Bootstrap vcpkg.
+3. Install `sqlite3[core,tool]` and `tiff`.
+4. Build PROJ statically with the same flags used by the Dockerfile.
+5. Export `PKG_CONFIG_PATH`, `CGO_ENABLED`, `CGO_LDFLAGS`, and `PROJ_DATA`.
+6. Run `go test ./...`.
 
----
+## Updating gotiler-core
 
-**9. Build gocesiumtiler**
+Because `gotiler-core` is public, updating is a normal Go module operation:
 
-This could require some adaptations, and depending on your development configuration you might have to tune parameters like the linker search path or the `PKG_CONFIG_PATH`.
-
-The following is a general guide of a configuration that could work: 
-```
-$env:PKG_CONFIG_PATH="C:\usr\local\lib\pkgconfig;C:\vcpkg\installed\x64-mingw-static\lib\pkgconfig"; `
-$env:CC="x86_64-w64-mingw32-gcc"; `
-$env:CGO_ENABLED=1; `
-$env:CGO_LDFLAGS="-L/vcpkg/installed/x64-mingw-static/lib -g -O2 -static -lstdc++ -lsqlite3 -ltiff -lzlib -ljpeg -llzma -lm"; `
-go build -o ./bin/gocesiumtiler.exe ./cmd/main.go
-```
-
-To run the tests similarly run:
-```
-$env:PKG_CONFIG_PATH="C:\usr\local\lib\pkgconfig;C:\vcpkg\installed\x64-mingw-static\lib\pkgconfig"; `
-$env:CC="x86_64-w64-mingw32-gcc"; `
-$env:CGO_ENABLED=1; `
-$env:CGO_LDFLAGS="-L/vcpkg/installed/x64-mingw-static/lib -g -O2 -static -lstdc++ -lsqlite3 -ltiff -lzlib -ljpeg -llzma -lm"; `
-go test -v ./...
+```bash
+go get github.com/mfbonfigli/gotiler-core@main
+go mod tidy
 ```
 
-The environment variables `PKG_CONFIG_PATH`, `CC`, `CGO_ENABLED`, `CGO_LDFLAGS` could also be stored permanently in the environment configuration so that the build and test commands become trivial. 
+For local development against a sibling checkout:
 
-```
-go build -o ./bin/gocesiumtiler.exe ./cmd/main.go
-```
-
-and
-
-```
-go test v ./...
+```bash
+go mod edit -replace github.com/mfbonfigli/gotiler-core=C:\Users\bonfi\workplace\gotiler-core
 ```
 
-### **Setup a Linux development environment**
+Remove it before committing unless the replacement is intentional:
 
-Please refer to the Dockerfile where the commands to setup a dev environment for Ubuntu-based development environment are listed in detail.
+```bash
+go mod edit -dropreplace github.com/mfbonfigli/gotiler-core
+go mod tidy
+```
