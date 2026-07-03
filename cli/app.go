@@ -274,7 +274,7 @@ func getFlags(c *cliOpts) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "attributes",
 			Value:       c.attributes,
-			Usage:       `comma-separated list of optional per-point attributes to include in the output tiles. Supported values: "intensity", "classification", "return_number", "number_of_returns", "none". Use "none" to export no attributes (smaller tiles, no metadata). Default is "intensity,classification".`,
+			Usage:       `comma-separated list of optional per-point attributes to include in the output tiles. Accepts any attribute exposed by the input files, matched case-insensitively: standard names such as "intensity", "classification", "return_number", "number_of_returns"; reader-specific ones (e.g. "gps_time", "scan_angle", "point_source_id", "user_data" for LAS/LAZ); and any extra-byte or extension attribute defined in the source. Attributes not found in the source are skipped, and attributes whose data type cannot be represented by the chosen tileset version may be omitted from the output. Use "none" to export no attributes (smaller tiles, no metadata). Default is "intensity,classification".`,
 			Destination: &c.attributes,
 		},
 		&cli.BoolFlag{
