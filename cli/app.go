@@ -278,6 +278,12 @@ func getFlags(c *cliOpts) []cli.Flag {
 			Destination: &c.attributes,
 		},
 		&cli.BoolFlag{
+			Name:        "include-withheld",
+			Value:       c.includeWithheld,
+			Usage:       "include points marked as withheld. By default, withheld points are filtered out when the source exposes a withheld attribute.",
+			Destination: &c.includeWithheld,
+		},
+		&cli.BoolFlag{
 			Name:        "plain",
 			Value:       c.plain,
 			Usage:       "disable progress bars and print only milestone updates as plain text",
@@ -315,6 +321,7 @@ type cliOpts struct {
 	initialGeometricError float64
 	geCorrection          float64
 	attributes            string
+	includeWithheld       bool
 }
 
 func defaultCliOptions() *cliOpts {
@@ -332,6 +339,7 @@ func defaultCliOptions() *cliOpts {
 		initialGeometricError: 0,
 		geCorrection:          1.0,
 		attributes:            "intensity,classification",
+		includeWithheld:       false,
 	}
 }
 
@@ -547,6 +555,7 @@ func (c *cliOpts) printSummary(input, mode string) {
 		fmt.Fprintf(os.Stderr, "Init GE:    %s\n", initialGeometricErrorDisp)
 		fmt.Fprintf(os.Stderr, "GE Corr:    %gx\n", c.geCorrection)
 		fmt.Fprintf(os.Stderr, "Attribs:    %s\n", c.attributes)
+		fmt.Fprintf(os.Stderr, "Incl Withheld: %v\n", c.includeWithheld)
 		fmt.Fprintln(os.Stderr)
 		return
 	}
@@ -568,6 +577,7 @@ func (c *cliOpts) printSummary(input, mode string) {
 	fmt.Fprintln(os.Stderr, boxRow("📐 Initial Geom Err:   ", initialGeometricErrorDisp))
 	fmt.Fprintln(os.Stderr, boxRow("🔧 GE Correction:      ", fmt.Sprintf("%gx", c.geCorrection)))
 	fmt.Fprintln(os.Stderr, boxRowWrapped("📊 Attributes:         ", c.attributes))
+	fmt.Fprintln(os.Stderr, boxRow("Include Withheld:     ", fmt.Sprintf("%v", c.includeWithheld)))
 	fmt.Fprintln(os.Stderr, boxFooter())
 	fmt.Fprintln(os.Stderr)
 }
@@ -583,6 +593,9 @@ func (c *cliOpts) getTilerOptions() *tiler.TilerOptions {
 	c.validate()
 	mutators := []mutator.Mutator{
 		mutator.NewZOffset(float32(c.zOffset)),
+	}
+	if !c.includeWithheld {
+		mutators = append(mutators, mutator.NewWithheldFilter())
 	}
 	refineMode := model.RefineAdd
 	if c.refineMode == "replace" {

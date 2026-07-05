@@ -183,8 +183,11 @@ func TestMainProcessFile(t *testing.T) {
 	if actual := mockTiler.Mutators[0].(*mutator.ZOffset).Offset; actual != -1 {
 		t.Errorf("expected tiler to be called with ZOffset mutator with offset %v but got %v", -1, actual)
 	}
-	if actual := len(mockTiler.Mutators); actual != 1 {
-		t.Errorf("expected 1 mutator but got %v", actual)
+	if actual := len(mockTiler.Mutators); actual != 2 {
+		t.Errorf("expected 2 mutators but got %v", actual)
+	}
+	if _, ok := mockTiler.Mutators[1].(*mutator.WithheldFilter); !ok {
+		t.Errorf("expected second mutator to filter withheld points, got %T", mockTiler.Mutators[1])
 	}
 	if actual := mockTiler.RefineMode; actual != model.RefineReplace {
 		t.Errorf("expected tiler to be called with refine mode %v but got %v", "replace", actual)
@@ -242,8 +245,11 @@ func TestMainProcessFolder(t *testing.T) {
 	if actual := mockTiler.Mutators[0].(*mutator.ZOffset).Offset; actual != -1 {
 		t.Errorf("expected tiler to be called with ZOffset mutator with offset %v but got %v", -1, actual)
 	}
-	if actual := len(mockTiler.Mutators); actual != 1 {
-		t.Errorf("expected 1 mutator but got %v", actual)
+	if actual := len(mockTiler.Mutators); actual != 2 {
+		t.Errorf("expected 2 mutators but got %v", actual)
+	}
+	if _, ok := mockTiler.Mutators[1].(*mutator.WithheldFilter); !ok {
+		t.Errorf("expected second mutator to filter withheld points, got %T", mockTiler.Mutators[1])
 	}
 	if actual := mockTiler.RefineMode; actual != model.RefineAdd {
 		t.Errorf("expected tiler to be called with refine mode %v but got %v", "replace", actual)
@@ -318,8 +324,11 @@ func TestConfiguredPointCloudCommandFolderJoin(t *testing.T) {
 	if actual := mockTiler.Mutators[0].(*mutator.ZOffset).Offset; actual != -1 {
 		t.Errorf("expected tiler to be called with ZOffset mutator with offset %v but got %v", -1, actual)
 	}
-	if actual := len(mockTiler.Mutators); actual != 1 {
-		t.Errorf("expected 1 mutator but got %v", actual)
+	if actual := len(mockTiler.Mutators); actual != 2 {
+		t.Errorf("expected 2 mutators but got %v", actual)
+	}
+	if _, ok := mockTiler.Mutators[1].(*mutator.WithheldFilter); !ok {
+		t.Errorf("expected second mutator to filter withheld points, got %T", mockTiler.Mutators[1])
 	}
 	if actual := mockTiler.EncoderID; actual != plugin.EncoderGLB {
 		t.Errorf("expected tiler to be called with encoder %v but got %v", plugin.EncoderGLB, actual)
@@ -356,6 +365,35 @@ func TestMainProcessesFileWithoutSubcommand(t *testing.T) {
 	}
 	if actual := mockTiler.OutputFolder; actual != ".\\abc" {
 		t.Errorf("expected tiler to be called with output folder %v but got %v", ".\\abc", actual)
+	}
+}
+
+func TestMainProcessFileIncludeWithheldOmitsWithheldFilter(t *testing.T) {
+	tmp := t.TempDir()
+	input := filepath.Join(tmp, "myfile.las")
+	if err := touchFile(input); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	mockTiler := &tiler.MockTiler{}
+	app := NewApp(Options{TilerProvider: func() (tiler.Tiler, error) {
+		return mockTiler, nil
+	}})
+	err := app.Run([]string{"gotiler",
+		"-out", ".\\abc",
+		"--include-withheld",
+		input})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !mockTiler.ProcessFilesCalled {
+		t.Fatal("expected processFiles called but was not")
+	}
+	if actual := len(mockTiler.Mutators); actual != 1 {
+		t.Fatalf("expected only z-offset mutator when withheld points are included, got %d", actual)
+	}
+	if _, ok := mockTiler.Mutators[0].(*mutator.ZOffset); !ok {
+		t.Fatalf("expected z-offset mutator, got %T", mockTiler.Mutators[0])
 	}
 }
 

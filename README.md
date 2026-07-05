@@ -120,6 +120,7 @@ gotiler -o ./out --join ./las_folder
 | `--initial-geometric-error` | `0` | Root geometric error target in meters. `0` derives it from the dataset. |
 | `--ge-correction` | `1.0` | Multiplier applied to output geometric errors. |
 | `--attributes` | `intensity,classification` | Optional per-point attributes to export: any attribute exposed by the input files (see [Per-Point Attributes](#per-point-attributes)), or `none`. |
+| `--include-withheld` | `false` | Include points marked as withheld. By default, withheld points are filtered out when the source exposes a `withheld` attribute. |
 | `--join`, `-j` | `false` | For folder input, merge all point clouds into one tileset. |
 | `--plain` | `false` | Print plain milestone logs instead of progress bars. |
 | `--help`, `-h` | | Show help. |
